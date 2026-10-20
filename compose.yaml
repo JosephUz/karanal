@@ -1,0 +1,30 @@
+# Yerel Docker kurulumu: `docker compose up -d --build`, ardından http://localhost:5220
+# Oyun portu yalnızca bu bilgisayara açıktır (127.0.0.1); dışarıdan erişim Cloudflare Tunnel ile:
+# `docker compose --profile tunnel up -d --build` (TUNNEL_TOKEN .env dosyasında; paneldeki rota http://localhost:5220).
+name: karanal
+services:
+  game:
+    build: .
+    image: kara-nal
+    container_name: karanal
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PORT:-5220}:5220"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 5220
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: karanal-tunnel
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    # Oyunun ağ alanını paylaşır: paneldeki rota http://localhost:5220 doğrudan oyuna gider.
+    network_mode: "service:game"
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}  # boşsa cloudflared başlamaz; .env dosyasına yaz
+    depends_on:
+      game:
+        condition: service_healthy

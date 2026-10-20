@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#140d08"><title>Kara Nal · Geri dönüş yok.</title>
+  <meta name="description" content="Juland'ın kutu karakterleriyle mağarada atlı çatışma: on binici, bitmeyen döngü pist, geri dönüş yok. Yolda silah topla, öndekini düşür, peşindekine tuzak bırak. Botlarla ya da çevrim içi.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23140d08'/%3E%3Cpath d='M18 50V30a14 14 0 0 1 28 0v20' fill='none' stroke='%23e0a54a' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='21' cy='36' r='2' fill='%23140d08'/%3E%3Ccircle cx='43' cy='36' r='2' fill='%23140d08'/%3E%3Ccircle cx='24' cy='23' r='2' fill='%23140d08'/%3E%3Ccircle cx='40' cy='23' r='2' fill='%23140d08'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="sahne" aria-label="Kara Nal oyun alanı"></canvas>
+  <div id="etiketler" aria-hidden="true"></div>
+  <div id="vinyet"></div>
+
+  <header id="header">
+    <a class="brand" href="#" id="brand" aria-label="Kara Nal"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M11 33V19a9 9 0 0 1 18 0v14" stroke-width="4.2" stroke-linecap="round"/><circle cx="13" cy="24" r="1.2" class="nokta"/><circle cx="27" cy="24" r="1.2" class="nokta"/></svg><span>KARA NAL<small>GERİ DÖNÜŞ YOK.</small></span></a>
+    <!-- STANDART üst araç çubuğu (bütün JosephUz oyunlarında aynı sıra, aynı yazılar): ← josephuz.com · Ses · Kontroller F1.
+         Kara Nal'ın müziği yok, Müzik düğmesi de yok. -->
+    <div class="top-actions" id="toptools"><a id="homeLink" class="subtle" href="https://www.josephuz.com/">← <span class="site-name">josephuz.com</span></a><button id="sound" class="subtle" title="Ses efektlerini aç/kapat">Ses: açık</button><button id="help" class="subtle" title="Kontroller (F1)">Kontroller <kbd>F1</kbd></button></div>
+  </header>
+
+  <section id="ana">
+    <div class="ana-metin">
+      <p class="eyebrow"><span class="dash"></span> JULAND'IN BİNİCİLERİ · ATLI ÇATIŞMA</p>
+      <h1>Yarış bitmez,<br><em>geri dönüş yok.</em></h1>
+      <p class="intro">On binici, bitmeyen bir mağara pisti. Yolda silah topla, öndekini düşür,<br>peşindekine tuzak bırak. Düşen son geçtiği kapıdan yeniden çıkar.</p>
+      <div class="secim">
+        <span class="eyebrow">BİNİCİN</span>
+        <div id="karakterler" role="radiogroup" aria-label="Binici"></div>
+        <label class="ad-alan"><span class="eyebrow">ADIN</span><input id="ad" maxlength="16" autocomplete="nickname" spellcheck="false"></label>
+      </div>
+      <div class="secim"><span class="eyebrow">BOTLAR</span><div class="dilim" id="zorluk"><button data-v="kolay">Kolay</button><button data-v="orta">Orta</button><button data-v="zor">Zor</button></div></div>
+      <div class="ana-dugmeler"><button id="oyna" class="primary">BOTLARLA BİN <span>→</span></button><button id="cevrimici" class="outline" disabled>ÇEVRİM İÇİ · <b id="cevrimici-durum">Yakında</b></button></div>
+      <p id="dokunmatik-uyari" hidden>Kara Nal klavye ve fareyle oynanır. Bilgisayardan aç.</p>
+    </div>
+    <div class="sahne-yazi"><span class="eyebrow">KARA NAL MAĞARASI</span><p>Beş bölüm, on kapı, bir yön.</p><small>10 BİNİCİ · BOTLAR BOŞ KOLTUKLARI DOLDURUR</small></div>
+    <footer>JOSEPHUZ OYUNLARI <span>ATLI ÇATIŞMA · TARAYICIDA</span></footer>
+  </section>
+
+  <div id="oyun-ui" hidden>
+    <canvas id="harita" width="220" height="170" aria-hidden="true"></canvas>
+    <div id="ust"><div id="sure">8:00</div><div id="skorlar"></div><div id="durum-satir"><span id="bolum">TRİBÜN DÜZLÜĞÜ</span><span id="kapi">KAPI 0</span></div></div>
+    <div id="lesler" aria-live="polite"></div>
+    <div id="nisangah"><i></i><i></i><i></i><i></i><b></b></div>
+    <div id="isabet"></div>
+    <div id="yara-yon"></div>
+    <div id="mesaj"></div>
+    <div id="can-kutu" class="panel">
+      <span class="eyebrow">CAN</span><b id="can">100</b><span class="hiz-yazi"><b id="hiz">0</b> blok/sn</span>
+      <div class="meter"><i id="can-bar"></i></div><div class="meter ince"><i id="zirh-bar"></i></div><div class="meter ince"><i id="dayanim-bar"></i></div>
+      <div id="etkiler"></div>
+    </div>
+    <div id="silah-kutu" class="panel">
+      <span class="eyebrow" id="silah-ad">ELLERİN BOŞ</span><b id="cephane">—</b>
+      <div class="esya-baslik">SOL TIK · TEKERLEK</div><div id="saldiri" class="esyalar"></div>
+      <div class="esya-baslik">SAĞ TIK · 1–5</div><div id="savunma" class="esyalar"></div>
+    </div>
+    <div id="olum" hidden><span class="eyebrow">ATTAN DÜŞTÜN</span><h2 id="olum-baslik"></h2><p id="olum-kapi"></p><p id="olum-sayac"></p></div>
+    <div id="skor-tablo" class="panel" hidden><span class="eyebrow">SIRALAMA</span><table><thead><tr><th>#</th><th>Binici</th><th>Puan</th><th>Düşürdü</th><th>Düştü</th></tr></thead><tbody id="skor-satir"></tbody></table></div>
+    <div id="son" class="panel" hidden><span class="eyebrow">KOŞU BİTTİ</span><h2 id="son-baslik"></h2><table><thead><tr><th>#</th><th>Binici</th><th>Puan</th><th>Düşürdü</th><th>Düştü</th></tr></thead><tbody id="son-satir"></tbody></table><p id="son-sayac"></p></div>
+    <button id="kilit" class="panel" hidden>Binmek için tıkla</button>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="lobi-dialog" aria-labelledby="lobi-baslik"><div class="dialog-inner"><button class="close" data-close aria-label="Kapat">×</button><span class="eyebrow">ÇEVRİM İÇİ</span><h2 id="lobi-baslik">Mağaraya in.</h2>
+    <p>Odalar 10 kişilik; boş koltuklarda botlar koşar. Koşu sürerken de katılırsın: bir botun yerine geçersin.</p>
+    <div id="odalar"></div>
+    <div class="kod-satir"><input id="kod" maxlength="6" placeholder="ODA KODU" autocomplete="off" spellcheck="false"><button id="kod-katil" class="outline">Kodla katıl</button></div>
+    <div class="dialog-buttons"><label class="ozel-sec"><input id="ozel" type="checkbox"> Özel oda <small>listede görünmez, yalnız kodla ya da linkle</small></label><button id="oda-kur" class="outline">Oda kur</button><button id="hizli" class="primary">HIZLI KATIL →</button></div>
+  </div></dialog>
+
+  <dialog id="menu-dialog" aria-labelledby="pause-title"><div class="dialog-inner"><span class="eyebrow" id="menu-ust">BOTLU KOŞU DURAKLATILDI</span><h2 id="pause-title">Dizginleri çek.</h2>
+    <p id="oda-satir" hidden>Oda kodu <b id="oda-kod"></b> <button id="oda-link" class="outline kucuk">Linki kopyala</button></p>
+    <div class="menu-stack"><button id="resume" class="primary">DEVAM ET →</button><button id="pause-help" class="outline">Kontroller <kbd>F1</kbd></button><button id="pause-sound" class="outline">Ses: açık</button><label class="outline hassas">Fare hassasiyeti <input id="hassasiyet" type="range" min="0.3" max="3" step="0.05" value="1"><output id="hassasiyet-deger">1,00</output></label><button id="back-home" class="outline">Ana menü</button><a class="outline" href="https://www.josephuz.com/">josephuz.com'a dön</a></div></div></dialog>
+
+  <dialog id="help-dialog"><div class="dialog-inner"><button class="close" data-close aria-label="Kapat">×</button><span class="eyebrow">KARA NAL KURALLARI</span><h2>Geri dönüş yok.</h2>
+    <p class="controls-title">SÜRÜŞ</p><div class="controls"><div><kbd>W A S D</kbd> Atı kameraya göre sür</div><div><kbd>SHIFT</kbd> Basılı tut: dörtnala (dayanım)</div><div><kbd>FARE</kbd> Bak ve nişan al · at yönünü korur</div><div><kbd>SPACE</kbd> Zıpla · alçak çitin üstünden</div><div><kbd>TAB</kbd> Sıralama</div><div><kbd>ESC</kbd> Menü</div></div>
+    <p class="controls-title">SİLAHLAR</p><div class="controls"><div><kbd>SOL TIK</kbd> Saldırı silahı · nişangâha</div><div><kbd>SAĞ TIK</kbd> Savunma eşyası · arkaya ya da kendine</div><div><kbd>TEKERLEK</kbd> Saldırı silahı değiştir</div><div><kbd>1 – 5</kbd> Mayın · Duman · Çivi · Yelek · Mahmuz</div></div>
+    <p><b>Kırmızı sandık</b> saldırı silahı verir: tabanca, çifte (yakında güçlü), tüfek (uzağa), kement (yavaşlatır, sana çeker), dinamit (fırlatılır). <b>Mavi sandık</b> savunma eşyası verir: mayın ve çivi arkana bırakılır, duman peşindekinin nişanını keser, çelik yelek darbeyi emer, mahmuz kaçırır ve kementi koparır.</p>
+    <p>Amaç bitişe varmak değil, <b>düşürmek</b>: her düşürme 100 puan, üçleme ve beşleme ek puan. En çok düşüreni <b>aranan</b> olur; onu düşürene +100. Düşen eşyalarını yere bırakır (ganimet) ve <b>son geçtiği kapıdan</b> eli boş çıkar. Akışın tersine gidilmez: at şaha kalkar. Koşu 8 dakika.</p>
+    <button class="primary" data-close>ANLADIM →</button></div></dialog>
+
+  <div id="fatal" hidden><h2>Oyun açılamadı.</h2><p id="fatal-message"></p><button onclick="location.reload()">Yeniden dene</button></div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body></html>
