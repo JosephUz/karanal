@@ -78,20 +78,34 @@ $('hassasiyet').oninput = () => { hassas = +$('hassasiyet').value; sakla.yaz('ha
 
 // ——— Ana ekran arka planı: botlar koşar ve çatışır, kamera sırayla birinin peşine takılır ———
 let demo = null, demoBirikim = 0, demoTakip = 1, demoT = 0;
-const demoKam = new T.Vector3(), demoBak = new T.Vector3();
+const demoKam = new T.Vector3(), demoBak = new T.Vector3(), demoHedef = new T.Vector3(), demoHedef2 = new T.Vector3();
+const demoOnce = new Map(), demoAra = new Map();
 const BOS_DUNYA = { k: [], g: [], m: [], c: [], d: [], n: [] };
 function demoBaslat() {
   demo = new Mac({}); demo.botlariDuzenle(); demo.olaylar.length = 0;
   for (const o of demo.oyuncular.values()) gor.oyuncuKur('d' + o.id, o.avatar, o.atRenk);
   for (let i = 0; i < 25 * MAC.tik; i++) demo.adim(1 / MAC.tik);
-  demo.olaylar.length = 0; demoT = 0;
+  demo.olaylar.length = 0; demoT = 0; demoOnce.clear(); demoAra.clear(); demoKam.set(0, 0, 0);
 }
 function demoDurdur() { if (!demo) return; for (const o of demo.oyuncular.values()) gor.oyuncuSil('d' + o.id); gor.dunyaGuncelle(BOS_DUNYA, 0); demo = null; }
 function demoAdim(dt, z) {
+  // Benzetim 30 Hz, çizim ekran hızında: önceki ve son adım arasında ara konumda çiz (yoksa atlar ve kamera kesik kesik ilerler)
   demoBirikim = Math.min(demoBirikim + dt, 0.2);
-  while (demoBirikim >= 1 / MAC.tik) { demoBirikim -= 1 / MAC.tik; demo.adim(1 / MAC.tik); }
-  const sn = demo.ozet();
-  for (const a of sn.o) gor.oyuncuGuncelle('d' + a[0], [a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[10]], dt);
+  while (demoBirikim >= 1 / MAC.tik) {
+    demoBirikim -= 1 / MAC.tik;
+    for (const o of demo.oyuncular.values()) demoOnce.set(o.id, [o.x, o.y, o.z, o.yaw]);
+    demo.adim(1 / MAC.tik);
+  }
+  const ar = demoBirikim * MAC.tik, sn = demo.ozet();
+  for (const a of sn.o) {
+    const p = demoOnce.get(a[0]);
+    if (p && Math.hypot(a[1] - p[0], a[3] - p[2]) < 4) {
+      a[1] = p[0] + (a[1] - p[0]) * ar; a[2] = p[1] + (a[2] - p[1]) * ar; a[3] = p[2] + (a[3] - p[2]) * ar;
+      a[4] = p[3] + Math.atan2(Math.sin(a[4] - p[3]), Math.cos(a[4] - p[3])) * ar;
+    }
+    demoAra.set(a[0], a);
+    gor.oyuncuGuncelle('d' + a[0], [a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[10]], dt);
+  }
   gor.dunyaGuncelle(sn, z);
   for (const { m } of demo.olaylar) {
     if (m.t === 'ates') atesGorseli(m, 'd');
@@ -100,10 +114,14 @@ function demoAdim(dt, z) {
   }
   demo.olaylar.length = 0;
   if ((demoT -= dt) <= 0) { demoT = 9; const l = [...demo.oyuncular.values()].filter(o => o.canli); demoTakip = l[Math.floor(Math.random() * l.length)]?.id ?? 1; demoKam.set(0, 0, 0); }
-  const o = demo.oyuncular.get(demoTakip); if (!o) return;
-  const a = o.yaw + Math.PI * 0.82 + Math.sin(z * 0.15) * 0.5, hedef = new T.Vector3(o.x + Math.sin(a) * 9.5, o.y + 3.8, o.z + Math.cos(a) * 9.5);
-  if (demoKam.lengthSq() === 0) demoKam.copy(hedef); else demoKam.lerp(hedef, Math.min(1, dt * 2.5));
-  demoBak.set(o.x - Math.sin(o.yaw) * 4, o.y + 1.6, o.z - Math.cos(o.yaw) * 4);
+  const d = demoAra.get(demoTakip); if (!d) return;
+  const [, ox, oy, oz, oyaw] = d, ilk = demoKam.lengthSq() === 0;
+  const a = oyaw + Math.PI * 0.82 + Math.sin(z * 0.15) * 0.5;
+  demoHedef.set(ox + Math.sin(a) * 9.5, oy + 3.8, oz + Math.cos(a) * 9.5);
+  const bak = demoHedef2.set(ox - Math.sin(oyaw) * 4, oy + 1.6, oz - Math.cos(oyaw) * 4);
+  // Kamera ve bakış noktası yumuşak izler: botun ani dönüşleri ekranı sarsmasın
+  if (ilk) { demoKam.copy(demoHedef); demoBak.copy(bak); }
+  else { demoKam.lerp(demoHedef, 1 - Math.exp(-dt * 2.5)); demoBak.lerp(bak, 1 - Math.exp(-dt * 6)); }
   gor.kamera.position.copy(demoKam); gor.kamera.lookAt(demoBak); gor.fov = 60;
 }
 
@@ -551,7 +569,7 @@ function dongu() {
   requestAnimationFrame(dongu);
   const zaman = simdi(), dt = Math.min(0.05, zaman - onceki); onceki = zaman;
   if (lobiBag && bag !== lobiBag) for (const m of lobiBag.al()) if (m.t === 'lobi') lobiIsle(m);
-  if (!oyun) { if (demo) demoAdim(dt, zaman); gor.cizim(dt, zaman, demo?.oyuncular.get(demoTakip)); return; }
+  if (!oyun) { if (demo) demoAdim(dt, zaman); const d = demo && demoAra.get(demoTakip); gor.cizim(dt, zaman, d ? { x: d[1], y: d[2], z: d[3] } : null); return; }
   const durdu = bag.yerel && (menuAcik || $('help-dialog').open);
   if (bag.yerel && !durdu) {
     oyun.birikim = Math.min(oyun.birikim + dt, 0.2);
