@@ -412,7 +412,7 @@ function digerleriniCiz(dt, zaman) {
 }
 
 /** Üçüncü şahıs kamera: binicinin omzunun üstünden, bakış yönünde; dörtnalada görüş açılır. Düşünce yukarıdan bakar. */
-const kamHedef = new T.Vector3();
+const kamHedef = new T.Vector3(), kamIzle = { ilk: false, x: 0, y: 0, z: 0 };
 function kamera(dt) {
   const k = gor.kamera;
   ben.sars = Math.max(0, ben.sars - dt * 2.5); ben.tepme = Math.max(0, ben.tepme - dt * 6);
@@ -425,25 +425,32 @@ function kamera(dt) {
   const p0 = ben.pitch + ben.tepme * 0.03, cp = Math.cos(p0), yon = new T.Vector3(-Math.sin(ben.bakis) * cp, Math.sin(p0), -Math.cos(ben.bakis) * cp);
   ben.sallanma += dt * (3 + ben.hiz * 0.75);
   const salla = ben.yerde ? Math.min(1, ben.hiz / AT.dortnala) : 0, sars = ben.sars * 0.25;
-  kamHedef.set(ben.x + Math.cos(ben.bakis) * 1.15 + (Math.random() - 0.5) * sars, ben.y + 3.25 + Math.abs(Math.sin(ben.sallanma)) * 0.07 * salla + (Math.random() - 0.5) * sars, ben.z - Math.sin(ben.bakis) * 1.15);
+  const hx = ben.x + Math.cos(ben.bakis) * 1.15, hy = ben.y + 3.25 + Math.abs(Math.sin(ben.sallanma)) * 0.035 * salla, hz = ben.z - Math.sin(ben.bakis) * 1.15;
+  if (!kamIzle.ilk || Math.hypot(hx - kamIzle.x, hz - kamIzle.z) > 6) Object.assign(kamIzle, { ilk: true, x: hx, y: hy, z: hz });
+  const kz = 1 - Math.exp(-dt * 28); kamIzle.x += (hx - kamIzle.x) * kz; kamIzle.y += (hy - kamIzle.y) * (1 - Math.exp(-dt * 14)); kamIzle.z += (hz - kamIzle.z) * kz;
+  kamHedef.set(kamIzle.x + (Math.random() - 0.5) * sars, kamIzle.y + (Math.random() - 0.5) * sars, kamIzle.z);
   const uzak = 6.2 + salla * 0.6;
   k.position.copy(kamHedef).addScaledVector(yon, -uzak);
   const p = pistNoktasi(ben.s); k.position.y = Math.max(p.y + 0.6, Math.min(k.position.y, p.y + (p.bolum === 'tunel' ? 6.4 : 22)));
   k.lookAt(kamHedef.clone().addScaledVector(yon, 10));
-  ben.fovEk += ((ben.mahmuzT > 0 ? 16 : ben.dortnala ? 8 : 0) - ben.fovEk) * Math.min(1, dt * 4);
-  gor.fov = 70 + ben.fovEk;
+  const hizOran = Math.max(0, Math.min(1.4, (ben.hiz - AT.tiris) / (AT.dortnala - AT.tiris)));
+  ben.fovEk += (hizOran * 11 - ben.fovEk) * Math.min(1, dt * 5);
+  gor.fov = 68 + ben.fovEk;
+  const ruzgar = Math.round(Math.min(1, hizOran) * 20) / 20;
+  if (hudOnce.ruzgar !== ruzgar) { hudOnce.ruzgar = ruzgar; $('ruzgar').style.opacity = ruzgar; $('ruzgar').classList.toggle('mahmuz', ben.mahmuzT > 0); }
 }
 
 // ——— Göstergeler ———
 const hudOnce = {};
 const yaz = (id, v) => { if (hudOnce[id] !== v) { hudOnce[id] = v; $(id).textContent = v; } };
 const html = (id, v) => { if (hudOnce[id] !== v) { hudOnce[id] = v; $(id).innerHTML = v; } };
+const cubuk = (id, v) => { v = Math.round(v); if (hudOnce[id] !== v) { hudOnce[id] = v; $(id).style.width = v + '%'; } };
 function gostergeler() {
   yaz('can', String(Math.max(0, Math.ceil(ben.can))));
-  $('can-bar').style.width = Math.max(0, ben.can) + '%'; $('zirh-bar').style.width = Math.min(100, ben.zirh / 60 * 100) + '%';
+  cubuk('can-bar', Math.max(0, ben.can)); cubuk('zirh-bar', Math.min(100, ben.zirh / 60 * 100));
   $('can-kutu').classList.toggle('dusuk', ben.can < 35);
   yaz('hiz', String(Math.round(ben.hiz)));
-  $('dayanim-bar').style.width = (ben.dayanim / AT.dayanim * 100) + '%';
+  cubuk('dayanim-bar', ben.dayanim / AT.dayanim * 100);
   $('can-kutu').classList.toggle('yorgun', ben.yorgun);
   html('etkiler', [ben.dortnala ? '<span class="acik">⇧ DÖRTNALA</span>' : ben.yorgun ? '<span class="bekle">⇧ YORGUN</span>' : '<span>⇧ DÖRTNALA</span>', ben.mahmuzT > 0 ? '<span class="acik">MAHMUZ</span>' : '', ben.topalT > 0 ? '<span class="kotu">TOPAL</span>' : '', ben.bagT > 0 ? '<span class="kotu">KEMENTLİ</span>' : '', ben.zirh > 0 ? `<span class="acik">YELEK ${Math.round(ben.zirh)}</span>` : ''].join(''));
   // Eşyalar: üstte saldırı (tekerlek), altta savunma (1–5)

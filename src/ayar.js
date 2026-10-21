@@ -1,9 +1,9 @@
 // Bütün ayar sayıları tek yerde. Birim: 1 = bir blok (≈1 m), hız blok/sn, süre saniye.
 
 export const AT = {
-  tiris: 9.5, dortnala: 15, mahmuz: 20, // hız: W ile tırıs, Shift basılıyken dörtnala, mahmuzlanınca
-  ivme: 9, fren: 13, // hızlanma / yavaşlama (blok/sn²)
-  donus: 4.2, donusHizli: 2.6, // dönüş hızı (rad/sn): yavaşken / dörtnalada
+  tiris: 12, dortnala: 21, mahmuz: 27, // hız: W ile tırıs, Shift basılıyken dörtnala (Yakar Gol gibi ~1,75 kat), mahmuzlanınca
+  ivme: 11, ivmeDort: 26, fren: 15, // hızlanma (Shift'e basınca sert) / yavaşlama (blok/sn²)
+  donus: 4.4, donusHizli: 2.9, // dönüş hızı (rad/sn): yavaşken / dörtnalada
   dayanim: 100, harca: 22, toplan: 14, yorgunEsik: 30, // Shift dayanım harcar; sıfırlanınca bu eşiğe dek dörtnala yok
   yaricap: 0.9, // binicilerin itişme yarıçapı (at gövdesi)
   ziplama: 7.8, yercekimi: 22,

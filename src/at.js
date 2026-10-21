@@ -46,7 +46,8 @@ export function atAdim(o, g, dt) {
   let hedefHiz = o.sahlanT > 0 || !istek ? 0 : o.mahmuzT > 0 ? AT.mahmuz : o.dortnala ? AT.dortnala : AT.tiris;
   if (o.topalT > 0) hedefHiz *= AT.topal;
   if (o.bagT > 0) hedefHiz *= KEMENT.bagHiz;
-  o.hiz += Math.max(-AT.fren * dt, Math.min(AT.ivme * (o.mahmuzT > 0 ? 2.5 : 1) * dt, hedefHiz - o.hiz));
+  const ivme = o.mahmuzT > 0 ? AT.ivmeDort * 1.4 : o.dortnala ? AT.ivmeDort : AT.ivme;
+  o.hiz += Math.max(-AT.fren * dt, Math.min(ivme * dt, hedefHiz - o.hiz));
   // Ters yöne sürüş isteğinde at yavaşlar (yerinde dönmeye çalışır)
   if (istek) { const f = Math.cos(aci(Math.atan2(-yx, -yz) - o.yaw)); if (f < 0) o.hiz = Math.max(0, o.hiz - AT.fren * 0.6 * dt * -f); }
   o.x += -Math.sin(o.yaw) * o.hiz * dt; o.z += -Math.cos(o.yaw) * o.hiz * dt;

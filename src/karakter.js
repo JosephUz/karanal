@@ -130,7 +130,7 @@ export function biniciModeli(tarif, atRenk) {
       }
       if (olu) { olu = 0; binici.rotation.set(0, 0, 0); binici.position.x = 0; }
       // Dörtnala döngüsü: ön ve arka bacak çiftleri karşılıklı, hız arttıkça sıklaşır
-      const oran = Math.min(1, hiz / 15); faz += dt * (3 + hiz * 0.75);
+      const oran = Math.min(1, hiz / 21); faz += dt * (3 + Math.min(hiz, 24) * 0.62);
       const genlik = havada ? 0 : Math.min(1, hiz / 5) * (0.5 + oran * 0.35);
       const [onSol, onSag, arkaSol, arkaSag] = at.bacak;
       onSol.rotation.x = Math.sin(faz) * genlik; onSag.rotation.x = Math.sin(faz + 0.5) * genlik;

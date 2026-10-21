@@ -68,7 +68,25 @@ export class Gorunum {
     Object.assign(g.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 120 }); g.shadow.bias = -0.0006; g.shadow.normalBias = 0.04;
     this.sahne.add(g, g.target); this.isik = g;
     this.oyuncular = new Map(); this.efektler = []; this.titrek = [];
+    // Işık sayısı hiç değişmez: değişirse bütün malzemeler yeniden derlenir ve oyun takılır. Patlamalar bu havuzdan ışık alır.
+    this.patlamaIsik = [0, 1, 2].map(() => { const l = new T.PointLight('#ffb060', 0, 22); this.sahne.add(l); return { l, t: 1 }; }); this.patlamaNo = 0;
+    this.toprak = new Parcalar(this.sahne, 700, new T.MeshLambertMaterial()); this.kivilcimlar = new Parcalar(this.sahne, 400, new T.MeshBasicMaterial());
     this.dunyaKur();
+    this.isit();
+  }
+
+  /**
+   * Isınma: oyunda sonradan çıkan her şeyin (ganimet, mayın, çivi, duman, dinamit, patlama, mermi, binici) gölgelendiricisi
+   * açılışta derlenir; yoksa ilk görüldüğü karede oyun takılır.
+   */
+  isit() {
+    const uzak = -500, v = new T.Vector3(0, uzak, 0);
+    this.dunyaGuncelle({ k: [], g: [[1, 0, uzak, 0]], m: [[1, 0, uzak, 0, 1]], c: [[1, 0, 0]], d: [[1, 0, uzak, 0, 5]], n: [[1, 0, uzak, 0]] }, 0);
+    this.patlama(v, 3); this.mermiUcur(v, new T.Vector3(1, uzak, 0)); this.kivilcim(v); this.toz(0, uzak, 0, 0, 10);
+    const b = biniciModeli({ model: 'gezgin' }, ['#8a5a32', '#3a2618']); b.silah(0); b.grup.position.y = uzak; this.sahne.add(b.grup); b.vuruldu();
+    try { this.r.compile(this.sahne, this.kamera); } catch { /* derleme sonra yapılır */ }
+    this.sahne.remove(b.grup);
+    this.dunyaGuncelle({ k: [], g: [], m: [], c: [], d: [], n: [] }, 0);
   }
 
   dunyaKur() {
@@ -165,8 +183,8 @@ export class Gorunum {
       for (const k of [-1, 1]) {
         const [x, y, z] = nokta(i, k * (w0 + 1.3), H / 2); tas.kutu(x, y, z, 1.3, H, 1.3, '#5a4c40', yaw);
         const [bx, by, bz] = nokta(i, k * (w0 + 1.3), H - 3.2); kumas.kutu(bx, by, bz, 0.9, 3.2, 1.4, '#8a2418', yaw);
-        const isik = new T.PointLight('#ffae55', 28, 34, 1.6); const [lx, ly, lz] = nokta(i, k * (w0 + 0.4), H - 1.2); isik.position.set(lx, ly, lz); this.sahne.add(isik); this.titrek.push({ isik, t: no * 1.7 + k, g: 28 });
       }
+      { const isik = new T.PointLight('#ffae55', 42, 40, 1.5), [lx, ly, lz] = nokta(i, 0, H - 1.6); isik.position.set(lx, ly, lz); this.sahne.add(isik); this.titrek.push({ isik, t: no * 1.7, g: 42 }); }
       const [x, y, z] = nokta(i, 0, H + 0.2); tas.kutu(x, y, z, P.w[i] + 4.2, 0.9, 1.1, '#4e4136', yaw);
       const tabelaW = no === 0 ? 13 : 3.2, tabelaH = no === 0 ? 2.6 : 2.2;
       const doku = no === 0
@@ -319,47 +337,38 @@ export class Gorunum {
   // ——— Efektler ———
   efekt(nesne, sure, adim) { this.sahne.add(nesne); this.efektler.push({ nesne, t: 0, sure, adim }); }
   toz(x, y, z, yaw, hiz) {
-    for (let k = 0; k < 2; k++) {
-      const m = new T.Mesh(kucukKup, new T.MeshLambertMaterial({ color: Math.random() < 0.5 ? '#6b4a2c' : '#8a6440', transparent: true }));
-      m.position.set(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6); const b = 0.08 + Math.random() * 0.12; m.scale.setScalar(b);
-      const v = new T.Vector3(Math.sin(yaw) * hiz * 0.15 + (Math.random() - 0.5) * 2, 1.5 + Math.random() * 2.5, Math.cos(yaw) * hiz * 0.15 + (Math.random() - 0.5) * 2);
-      this.efekt(m, 0.7, (o, t, dt) => { v.y -= 14 * dt; o.position.addScaledVector(v, dt); if (o.position.y < y) { o.position.y = y; v.set(0, 0, 0); } o.material.opacity = 1 - t * t; });
-    }
+    for (let k = 0; k < 2; k++) this.toprak.at(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6, Math.sin(yaw) * hiz * 0.15 + (Math.random() - 0.5) * 2, 1.5 + Math.random() * 2.5, Math.cos(yaw) * hiz * 0.15 + (Math.random() - 0.5) * 2, 0.08 + Math.random() * 0.12, Math.random() < 0.5 ? TOZ1 : TOZ2, 0.7, 14, y);
   }
   iz(a, b, renk = '#ffe9a8', kalin = 0.025) {
     const u = a.distanceTo(b); if (u < 0.1) return;
-    const m = new T.Mesh(kucukKup, new T.MeshBasicMaterial({ color: renk, transparent: true, opacity: 0.85, depthWrite: false }));
+    const m = new T.Mesh(kucukKup, malzeme(renk, 0.55, false));
     m.position.copy(a).lerp(b, 0.5); m.scale.set(kalin, kalin, u); m.lookAt(b);
-    this.efekt(m, 0.16, (o, t) => { o.material.opacity = 0.6 * (1 - t); });
+    this.efekt(m, 0.16, (o, t) => { o.scale.x = o.scale.y = kalin * (1 - t); });
   }
   /** Uçan mermi (görsel): namludan hedefe hiz blok/sn; vardığında vardi(). Hasar zaten anında hesaplanır. */
   mermiUcur(a, b, { renk = '#ffd27a', hiz = 170, kalin = 0.05, uzun = 1.1, iz = 0.22, vardi } = {}) {
     const u = a.distanceTo(b); if (u < 0.2) { vardi?.(); return; }
     const yon = b.clone().sub(a).normalize(), sure = u / hiz, L0 = Math.min(uzun, u);
-    const m = new T.Mesh(kucukKup, new T.MeshBasicMaterial({ color: renk, transparent: true, opacity: 1, depthWrite: false, blending: T.AdditiveBlending }));
+    const m = new T.Mesh(kucukKup, malzeme(renk, 1, true));
     m.scale.set(kalin, kalin, L0); m.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), yon);
     const bas = new T.Vector3(), uc = new T.Vector3(); let vardiMi = false;
     this.efekt(m, sure + 0.03, (o, t) => {
       const d = Math.min(u, (t * (sure + 0.03)) * hiz);
       uc.copy(a).addScaledVector(yon, d); bas.copy(a).addScaledVector(yon, Math.max(0, d - L0));
       o.position.copy(bas).lerp(uc, 0.5); o.scale.z = Math.max(0.05, uc.distanceTo(bas));
-      if (d >= u && !vardiMi) { vardiMi = true; o.material.opacity = 0; vardi?.(); }
+      if (d >= u && !vardiMi) { vardiMi = true; o.visible = false; vardi?.(); }
     });
     if (iz) this.iz(a, b, renk, kalin * iz);
   }
   kivilcim(p, renk = '#e8dcc0', sayi = 5) {
-    for (let i = 0; i < sayi; i++) {
-      const m = new T.Mesh(kucukKup, new T.MeshBasicMaterial({ color: renk, transparent: true }));
-      m.position.copy(p); m.scale.setScalar(0.06 + Math.random() * 0.06);
-      const v = new T.Vector3((Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 4);
-      this.efekt(m, 0.35, (o, t, dt) => { v.y -= 12 * dt; o.position.addScaledVector(v, dt); o.material.opacity = 1 - t; });
-    }
+    const c = renkBul(renk);
+    for (let i = 0; i < sayi; i++) this.kivilcimlar.at(p.x, p.y, p.z, (Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 4, 0.06 + Math.random() * 0.06, c, 0.35, 12, -1e9);
   }
   kan(p) { this.kivilcim(p, '#b8322a', 6); }
   patlama(p, alan = 4) {
     const top = new T.Mesh(new T.IcosahedronGeometry(1, 1), new T.MeshBasicMaterial({ color: '#ffb347', transparent: true, depthWrite: false }));
     top.position.copy(p); this.efekt(top, 0.5, (o, t) => { o.scale.setScalar(0.5 + t * alan); o.material.opacity = 0.9 * (1 - t); o.material.color.setRGB(1, 0.7 - t * 0.4, 0.3 - t * 0.25); });
-    const isik = new T.PointLight('#ffb060', 60, alan * 4); isik.position.copy(p); this.efekt(isik, 0.35, (o, t) => { o.intensity = 60 * (1 - t); });
+    const pi = this.patlamaIsik[this.patlamaNo++ % this.patlamaIsik.length]; pi.l.position.copy(p); pi.l.distance = alan * 4; pi.t = 0;
     this.kivilcim(p, '#3a3530', 12); this.kivilcim(p, '#ffcf6a', 10); this.kivilcim(p, '#6b4a2c', 10);
   }
   /** Kement ipi: atan ile bağlanan arasında sure boyunca gerili ip. ucA/ucB konum yazar (yoksa false). */
@@ -371,15 +380,63 @@ export class Gorunum {
   cizim(dt, zaman, odak) {
     for (let i = this.efektler.length - 1; i >= 0; i--) {
       const e = this.efektler[i]; e.t += dt; const t = Math.min(1, e.t / e.sure); e.adim?.(e.nesne, t, dt);
-      if (e.t >= e.sure) { this.sahne.remove(e.nesne); e.nesne.material?.dispose?.(); this.efektler.splice(i, 1); }
+      if (e.t >= e.sure) { this.sahne.remove(e.nesne); if (!e.nesne.material?.userData?.ortak) e.nesne.material?.dispose?.(); this.efektler.splice(i, 1); }
     }
     for (const f of this.titrek) f.isik.intensity = f.g * (0.85 + Math.sin(zaman * 9 + f.t) * 0.06 + Math.sin(zaman * 23 + f.t * 3) * 0.05);
     if (this.suDoku) this.suDoku.offset.y = (zaman * 1.6) % 1;
-    if (odak) { this.isik.position.set(odak.x + 12, odak.y + 50, odak.z + 8); this.isik.target.position.set(odak.x, odak.y, odak.z); this.isik.target.updateMatrixWorld(); }
+    this.toprak.adim(dt); this.kivilcimlar.adim(dt);
+    for (const p of this.patlamaIsik) { p.t = Math.min(1, p.t + dt / 0.35); p.l.intensity = 60 * (1 - p.t); }
+    if (odak) {
+      // Işık uzayında gölge dokusunun adımına yuvarla: oyuncu hareket ederken gölge kenarları titremez
+      const adim = 90 / 2048, sag = GOLGE_SAG, yuk = GOLGE_YUK, x = odak.x, y = odak.y, z = odak.z;
+      const a = Math.round((x * sag.x + y * sag.y + z * sag.z) / adim) * adim, b = Math.round((x * yuk.x + y * yuk.y + z * yuk.z) / adim) * adim, c = x * GOLGE_YON.x + y * GOLGE_YON.y + z * GOLGE_YON.z;
+      const mx = sag.x * a + yuk.x * b + GOLGE_YON.x * c, my = sag.y * a + yuk.y * b + GOLGE_YON.y * c, mz = sag.z * a + yuk.z * b + GOLGE_YON.z * c;
+      this.isik.position.set(mx + 12, my + 50, mz + 8); this.isik.target.position.set(mx, my, mz); this.isik.target.updateMatrixWorld();
+    }
     this.kamera.fov += (this.fov - this.kamera.fov) * Math.min(1, dt * 8); this.kamera.updateProjectionMatrix();
     this.r.render(this.sahne, this.kamera);
   }
 }
 
 const kucukKup = new T.BoxGeometry(1, 1, 1), pufGeo = new T.IcosahedronGeometry(1, 2);
+// Gölge ışığının sabit yönü ve ışık uzayı eksenleri (ızgaraya oturtma için)
+const GOLGE_YON = new T.Vector3(-12, -50, -8).normalize(), GOLGE_SAG = new T.Vector3().crossVectors(GOLGE_YON, new T.Vector3(0, 1, 0)).normalize(), GOLGE_YUK = new T.Vector3().crossVectors(GOLGE_SAG, GOLGE_YON).normalize();
+const TOZ1 = new T.Color('#6b4a2c'), TOZ2 = new T.Color('#8a6440'), renkler = new Map(), malzemeler = new Map();
+const renkBul = r => { if (!renkler.has(r)) renkler.set(r, new T.Color(r)); return renkler.get(r); };
+/** Renk başına paylaşılan efekt malzemesi (her mermide yeni malzeme yaratılmaz). */
+function malzeme(renk, opak, parlak) {
+  const k = renk + opak + parlak;
+  if (!malzemeler.has(k)) { const m = new T.MeshBasicMaterial({ color: renk, transparent: true, opacity: opak, depthWrite: false, blending: parlak ? T.AdditiveBlending : T.NormalBlending }); m.userData.ortak = true; malzemeler.set(k, m); }
+  return malzemeler.get(k);
+}
+/** Parçacık havuzu: tek InstancedMesh; her parçacık hız, yerçekimi, ömür ve taban yüksekliğiyle uçar, sönerken küçülür. */
+class Parcalar {
+  constructor(sahne, n, mat) {
+    this.n = n; this.m = new T.InstancedMesh(kucukKup, mat, n); this.m.frustumCulled = false;
+    this.p = new Float32Array(n * 3); this.v = new Float32Array(n * 3); this.boy = new Float32Array(n); this.omur = new Float32Array(n).fill(1); this.yas = new Float32Array(n).fill(1); this.g = new Float32Array(n); this.taban = new Float32Array(n);
+    this.sira = 0; this.d = new T.Object3D(); this.sifir = new T.Matrix4().makeScale(0, 0, 0);
+    for (let i = 0; i < n; i++) { this.m.setMatrixAt(i, this.sifir); this.m.setColorAt(i, TOZ1); }
+    sahne.add(this.m);
+  }
+  at(x, y, z, vx, vy, vz, boy, renk, omur, g, taban) {
+    const i = this.sira++ % this.n, k = i * 3;
+    this.p[k] = x; this.p[k + 1] = y; this.p[k + 2] = z; this.v[k] = vx; this.v[k + 1] = vy; this.v[k + 2] = vz;
+    this.boy[i] = boy; this.omur[i] = omur; this.yas[i] = 0; this.g[i] = g; this.taban[i] = taban;
+    this.m.setColorAt(i, renk); this.m.instanceColor.needsUpdate = true;
+  }
+  adim(dt) {
+    let degisti = false;
+    for (let i = 0; i < this.n; i++) {
+      if (this.yas[i] >= 1) continue;
+      degisti = true; const k = i * 3;
+      this.yas[i] += dt / this.omur[i];
+      if (this.yas[i] >= 1) { this.m.setMatrixAt(i, this.sifir); continue; }
+      this.v[k + 1] -= this.g[i] * dt; this.p[k] += this.v[k] * dt; this.p[k + 1] += this.v[k + 1] * dt; this.p[k + 2] += this.v[k + 2] * dt;
+      if (this.p[k + 1] < this.taban[i]) { this.p[k + 1] = this.taban[i]; this.v[k] = this.v[k + 1] = this.v[k + 2] = 0; }
+      this.d.position.set(this.p[k], this.p[k + 1], this.p[k + 2]); this.d.scale.setScalar(this.boy[i] * (1 - this.yas[i] * this.yas[i])); this.d.updateMatrix();
+      this.m.setMatrixAt(i, this.d.matrix);
+    }
+    if (degisti) this.m.instanceMatrix.needsUpdate = true;
+  }
+}
 export { L };

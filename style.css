@@ -168,3 +168,8 @@ body.sahlan #vinyet{box-shadow:inset 0 0 160px #c4452c99}
 #lobi-dialog .dialog-buttons{align-items:center;flex-wrap:wrap}
 @media (max-height:700px){#silah-kutu{width:270px}.esya-baslik{margin-top:5px}}
 
+
+/* Dörtnala: ekran kenarlarından merkeze akan rüzgar çizgileri (Yakar Gol'deki hız çizgileri gibi; orta açık kalır). Opaklık hıza göre. */
+#ruzgar{position:absolute;inset:-12%;z-index:-1;pointer-events:none;opacity:0;background:repeating-conic-gradient(from 0deg,#fff4e000 0deg 4.6deg,#fff1dc40 5deg 5.5deg,#fff4e000 5.9deg 9.5deg);-webkit-mask:radial-gradient(circle,transparent 36%,#000 74%);mask:radial-gradient(circle,transparent 36%,#000 74%);animation:ruzgar .32s linear infinite;transition:opacity .15s}
+#ruzgar.mahmuz{background:repeating-conic-gradient(from 0deg,#ffd27a00 0deg 3.6deg,#ffd27a55 4deg 4.6deg,#ffd27a00 5deg 7.5deg)}
+@keyframes ruzgar{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(2.5deg) scale(1.05)}100%{transform:rotate(0deg) scale(1)}}

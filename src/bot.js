@@ -79,7 +79,7 @@ export class Bot {
       if (yanal > e.a0 - 1.4 && yanal < e.a1 + 1.4) {
         const pe = pistNoktasi(e.s0), ey = pe.w / 2 - AT.kenarPay - 0.3;
         const sol = e.a0 - 1.6, sag = e.a1 + 1.6, solOlur = sol > -ey, sagOlur = sag < ey;
-        if (e.h < 1.2 && ileri < 3.4 && ileri > 1.8 && Math.abs(o.yanal - (e.a0 + e.a1) / 2) < (e.a1 - e.a0) / 2 + 1) this.zipla = true;
+        if (e.h < 1.2 && ileri > 0.14 * o.hiz + 0.3 && ileri < 0.14 * o.hiz + 1.5 && Math.abs(o.yanal - (e.a0 + e.a1) / 2) < (e.a1 - e.a0) / 2 + 1) this.zipla = true;
         else if (e.h >= 1.2 || r() < 0.98) yanal = solOlur && (!sagOlur || Math.abs(yanal - sol) < Math.abs(yanal - sag)) ? sol : sagOlur ? sag : yanal;
       }
     }
