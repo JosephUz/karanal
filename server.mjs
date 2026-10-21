@@ -36,7 +36,8 @@ function resolveFile(pathname) {
   return null;
 }
 
-const rooms = createRooms({ log: (...a) => console.log(new Date().toLocaleTimeString('tr-TR'), ...a) });
+// KOSU_SURE (sn): denemede kısa koşu (varsayılan ayar.js MAC.sure).
+const rooms = createRooms({ sure: Number(process.env.KOSU_SURE) || undefined, log: (...a) => console.log(new Date().toLocaleTimeString('tr-TR'), ...a) });
 const server = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
   if (pathname === '/health') { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': noStore, 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ oyun: 'kara-nal', ...rooms.stats(), surum: stamp })); return; }

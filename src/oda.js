@@ -4,9 +4,9 @@ import { Mac } from './mac.js';
 import { avatarDuzelt, adDuzelt } from './avatar-veri.js';
 
 export class Oda {
-  constructor({ id = 0, ad = 'Oda', kisi, rastgele, sure, zorluk = 'orta', ozel = false, kod = null } = {}) {
+  constructor({ id = 0, ad = 'Oda', kisi, rastgele, sure, zorluk = 'orta', ozel = false, kod = null, tekKosu = false } = {}) {
     this.id = id; this.ad = ad; this.ozel = ozel; this.kod = kod;
-    this.mac = new Mac({ kisi, rastgele, sure, zorluk });
+    this.mac = new Mac({ kisi, rastgele, sure, zorluk, tekKosu });
     this.mac.botlariDuzenle(); this.mac.olaylar.length = 0;
     this.istemciler = new Map(); this.sonEnv = new Map();
   }

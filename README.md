@@ -14,7 +14,7 @@ npm test           # benzetim + sunucu testleri
 ```
 
 `?otomatik=1` botlu koşuyu hemen başlatır, `?cevrimdisi=1` sunucuya bağlanmayı denemez, `?sunucu=ws://…` başka sunucu,
-`?oda=KOD` o odaya katılır.
+`?oda=KPRT-4` o odaya kendiliğinden katılır (davet linki). Sunucuda `KOSU_SURE=20 npm start` denemede koşuyu kısaltır.
 
 ## Düzen
 
@@ -27,13 +27,30 @@ npm test           # benzetim + sunucu testleri
 | `src/mac.js` | Maç: atış (geri sarmalı), hasar, düşme, ganimet, kapıda doğuş, sandıklar, mayın, çivi, duman, dinamit, puan, aranan |
 | `src/bot.js` | Bot: avcı / kaçak / pusucu huyu, hedef seçimi (karşılık, aranan), silah seçimi, tuzak, sandığa sapma, engel atlama |
 | `src/oda.js`, `src/ag.js` | Maçı istemcilere bağlar; botlu oyunda tarayıcıda, çevrim içi sunucuda aynı sınıf |
-| `src/main.js` | İstemci: giriş, kendi atın, kamera, nişan, ara değerleme, göstergeler, mini harita, menüler, lobi |
+| `src/main.js` | İstemci: giriş, kendi atın, kamera, nişan, ara değerleme, göstergeler, mini harita, menüler, çevrim içi bölümü ve bekleme odası |
+| `src/kod.js` | Oda kodu (KPRT-4) üretme ve düzeltme; sunucu ve istemci ortak |
 | `src/sahne.js`, `src/karakter.js` | Three.js: mağara, çitler, kapılar, tribün, köprü, şelale, tünel, engeller, sandıklar, tuzaklar; binici + kutu at + silahlar |
 | `src/avatar-veri.js` | Juland'dan kopya (6 hazır karakter). Juland'da değişirse buraya da kopyala |
-| `server.mjs`, `server/odalar.mjs` | Statik dosyalar + WebSocket lobisi (açık oda listesi, hızlı katıl, özel oda, kodla katılım) ve 30 Hz odalar |
+| `server.mjs`, `server/odalar.mjs` | Statik dosyalar + WebSocket: açık oda listesi, hızlı katıl, oda kur, kodla katıl, bekleme odası (koltuk, kuran, ayarlar), jetonla geri dönüş ve 30 Hz koşular |
 
 Ağ: herkes kendi atını yürütür ve konumunu yollar (30 Hz); oda ateşi istemcinin gördüğü ana (en çok 0,4 sn) geri sararak
 hesaplar. Atı etkileyenler (çivi, kement, mahmuz) istemciye `etki` mesajıyla gider. Oda 10 koltuk; boş koltuklarda bot koşar.
+
+## Çevrim içi akış
+
+josephuz oda standardına uyar (`josephuz/docs/oda-standardi.md`; yazılar orada, birebir).
+
+- Ana ekran: ADIN · BİNİCİN, BOTLAR ve **TEK BAŞINA ↗** · **ÇEVRİM İÇİ** (`● N çevrim içi`): **HIZLI KATIL →**, **ODA KUR**,
+  **ODAYA KATIL** (ODA KODU + KATIL) · **AÇIK ODALAR** listesi (kuranın adı, `<Zorluk> botlar · n/10 binici`, LOBİDE/MAÇTA,
+  KATIL →/DOLU). Liste sunucudan değişince gelir. Sunucu yoksa düğmeler kapalı, YAKINDA; liste gizli.
+- Kod `KPRT-4` (4 harf + rakam); `kprt4` yazılırsa düzeltilir. Odadayken adres `?oda=KOD`; jeton sessionStorage'da
+  (`karanal.oda`): sayfa yenilenince aynı koltuğa dönülür. Kopan oyuncunun koltuğu 60 sn tutulur, koşudaysa yerini bot oynar.
+- Bekleme odası: kod, Linki kopyala, AÇIK ODA / ÖZEL ODA; 10 koltuk (sıra = çıkış dizilişi). Boş koltuğa tıklayan oraya
+  geçer; kuran sürükleyip bırakır ya da oyuncuya sonra koltuğa tıklar (dolu koltukta yer değiştirir). Kuran bot zorluğunu ve
+  odanın açık/özel olduğunu seçer, **MAÇI BAŞLAT ↗** der; kuran çıkınca kuranlık sıradaki insana geçer.
+- Koşu sürerken gelen doğrudan koşuya girer, bir botun yerini alır. Koşu bitince oda bekleme odasına döner: sonuç ekranında
+  **LOBİYE DÖN**. Tek başına koşu kendi döngüsünde (birkaç saniye sonra yeni koşu) kalır. Esc menüsünde çevrim içiyken
+  **Odadan çık**, tek başınayken **Ana menü**.
 
 ## Yayın
 

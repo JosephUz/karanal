@@ -13,6 +13,7 @@ import { MODELLER, adDuzelt } from './avatar-veri.js';
 import { cal, calKonum, sesAcik, sesAyarla, sesBaslat } from './ses.js';
 import { yerelBaglanti, sunucuBaglanti } from './ag.js';
 import { Mac } from './mac.js';
+import { kodDuzelt, kodYeterli } from './kod.js';
 
 const $ = id => document.getElementById(id);
 const sakla = { al(k, v) { try { return localStorage.getItem('karanal.' + k) ?? v; } catch { return v; } }, yaz(k, v) { try { localStorage.setItem('karanal.' + k, v); } catch { /* yok */ } } };
@@ -145,26 +146,29 @@ function oyunBaslat(baglanti) {
   bag = baglanti;
   oyun = { benId: null, roster: new Map(), kalan: MAC.sure, kalanZ: simdi(), durum: 'oyun', snaps: [], fark: null, sk: [], sonBitis: 0, birikim: 0, olumZ: 0, olen: null, aranan: null, kod: null };
   document.body.classList.add('oyunda');
-  $('ana').hidden = true; $('oyun-ui').hidden = false; $('son').hidden = true; $('olum').hidden = true; $('lesler').innerHTML = '';
+  $('ana').hidden = true; $('bekleme').hidden = true; $('oyun-ui').hidden = false; $('son').hidden = true; $('son-lobi').hidden = true; $('olum').hidden = true; $('lesler').innerHTML = '';
   $('menu-ust').textContent = bag.yerel ? 'BOTLU KOŞU DURAKLATILDI' : 'ÇEVRİM İÇİ · KOŞU SÜRÜYOR';
   $('back-home').textContent = bag.yerel ? 'Ana menü' : 'Odadan çık';
   $('oda-satir').hidden = true;
   sesBaslat(); cal('basla', 0.7);
   kilitle();
 }
-function oyunBitir() {
+/** Koşu ekranını kapatır (çevrim içi bağlantıya dokunmaz; ardından ana ekran ya da bekleme odası gösterilir). */
+function oyunKapat() {
   if (!oyun) return;
-  if (bag && !bag.yerel) bag.gonder({ t: 'cik' }); else bag?.kapat();
+  if (bag?.yerel) bag.kapat();
   for (const id of [...gor.oyuncular.keys()]) gor.oyuncuSil(id);
   gor.dunyaGuncelle(BOS_DUNYA, 0);
   bag = null; oyun = null; ben.canli = false;
   document.body.classList.remove('oyunda', 'kilitli', 'sahlan', 'yarali');
-  $('oyun-ui').hidden = true; $('ana').hidden = false; $('etiketler').innerHTML = ''; etiketDiv.clear();
+  $('oyun-ui').hidden = true; $('etiketler').innerHTML = ''; etiketDiv.clear();
   if (document.pointerLockElement) document.exitPointerLock();
-  if (location.search.includes('oda=')) history.replaceState(null, '', location.pathname);
-  menuKapat(); demoBaslat(); lobiYenile();
+  menuKapat(); demoBaslat();
 }
+/** Duraklat menüsündeki çıkış: tek başınayken Ana menü, çevrim içiyken Odadan çık. */
+function oyunBitir() { if (!oyun) return; if (bag?.yerel) { oyunKapat(); anaGoster(); } else odadanCik(); }
 $('oyna').onclick = () => oyunBaslat(yerelBaglanti({ ad: secim.ad, avatar: avatarim(), zorluk: secim.zorluk }));
+$('son-lobi').onclick = () => { oyunKapat(); if (odaDurum) bekleGoster(); else anaGoster(); };
 
 // ——— Odadan gelenler ———
 const adi = id => id == null ? '' : (oyun?.roster.get(id)?.ad ?? '?');
@@ -229,8 +233,6 @@ function isle(m) {
     case 'aranan': oyun.aranan = m.id; cal('aranan', 0.6); if (m.id === oyun.benId) mesaj('ARANAN SENSİN', `Seni düşürene +${PUAN.aranan} ödül`); else mesaj(`${adi(m.id).toLocaleUpperCase('tr')} ARANIYOR`, `Düşürene +${PUAN.aranan} ödül`); break;
     case 'son': sonGoster(m); break;
     case 'basla': $('son').hidden = true; oyun.durum = 'oyun'; oyun.aranan = null; cal('basla', 0.7); mesaj('YENİ KOŞU', 'Herkes başlangıçta, eller boş'); break;
-    case 'lobi': lobiIsle(m); break;
-    case 'hata': toast(m.m); if (bag && !bag.yerel && oyun && !oyun.benId) oyunBitir(); break;
   }
 }
 const dinleyici = () => ({ x: ben.x, y: ben.y, z: ben.z, yaw: ben.bakis });
@@ -280,7 +282,12 @@ function sonGoster(m) {
   $('son-baslik').textContent = m.kazanan === oyun.benId ? 'Kara Nal senin!' : `${adi(m.kazanan)} kazandı.`;
   $('son-satir').innerHTML = m.l.map(([id, puan, les, olum], i) => satir(i + 1, id, puan, les, olum)).join('');
   $('son').hidden = false;
+  // Çevrim içi: oda bekleme odasına döndü; imleç serbest, LOBİYE DÖN ile koltuklara (kuran yeniden başlatır)
+  const cevrim = !bag.yerel;
+  $('son-lobi').hidden = !cevrim; $('son-sayac').hidden = cevrim;
+  if (cevrim) { fare.sol = fare.sag = false; tus.clear(); $('kilit').hidden = true; if (document.pointerLockElement) document.exitPointerLock(); }
 }
+const sonucta = () => oyun?.durum === 'son' && !bag?.yerel;
 const satir = (no, id, puan, les, olum) => { const r = oyun.roster.get(id); return `<tr class="${id === oyun.benId ? 'ben' : ''}"><td>${no}</td><td>${kacis(r?.ad ?? '?')}${r?.bot ? '<span class="bot">BOT</span>' : ''}${oyun.aranan === id ? '<span class="arn">ARANAN</span>' : ''}</td><td>${puan}</td><td>${les}</td><td>${olum}</td></tr>`; };
 let mesajT = 0;
 function mesaj(baslik, alt = '') { const e = $('mesaj'); e.innerHTML = ''; e.append(baslik); if (alt) { const s = document.createElement('small'); s.textContent = alt; e.append(s); } e.className = ''; void e.offsetWidth; e.className = 'goster'; clearTimeout(mesajT); mesajT = setTimeout(() => { e.className = ''; }, 1900); }
@@ -347,11 +354,11 @@ document.addEventListener('pointerlockchange', () => {
   kilitli = document.pointerLockElement === tuval;
   document.body.classList.toggle('kilitli', kilitli);
   if (kilitli) { menuKapat(); $('kilit').hidden = true; }
-  else if (oyun) { tus.clear(); fare.sol = fare.sag = false; if (!$('help-dialog').open) menuAc(); }
+  else if (oyun) { tus.clear(); fare.sol = fare.sag = false; if (!$('help-dialog').open && !sonucta()) menuAc(); }
 });
-document.addEventListener('pointerlockerror', () => { if (oyun) $('kilit').hidden = false; });
+document.addEventListener('pointerlockerror', () => { if (oyun && !sonucta()) $('kilit').hidden = false; });
 $('kilit').onclick = () => kilitle();
-tuval.addEventListener('click', () => { if (oyun && !kilitli && !menuAcik) kilitle(); });
+tuval.addEventListener('click', () => { if (oyun && !kilitli && !menuAcik && !sonucta()) kilitle(); });
 function menuAc() { if (!oyun || menuAcik) return; menuAcik = true; if (!$('menu-dialog').open) $('menu-dialog').showModal(); }
 function menuKapat() { menuAcik = false; if ($('menu-dialog').open) $('menu-dialog').close(); }
 $('menu-dialog').addEventListener('cancel', e => { e.preventDefault(); devam(); });
@@ -359,7 +366,7 @@ function devam() { menuKapat(); $('kilit').hidden = true; kilitle(); setTimeout(
 $('resume').onclick = devam;
 $('back-home').onclick = () => oyunBitir();
 $('help-dialog').addEventListener('close', () => { if (oyun && !kilitli && !menuAcik) menuAc(); });
-$('oda-link').onclick = () => { const u = location.origin + location.pathname + '?oda=' + oyun?.kod; navigator.clipboard?.writeText(u).then(() => toast('Oda linki kopyalandı.'), () => toast(u)); };
+$('oda-link').onclick = () => { const u = location.origin + location.pathname + '?oda=' + oyun?.kod; try { navigator.clipboard.writeText(u).then(() => toast('Link kopyalandı'), () => toast(u)); } catch { toast(u); } };
 
 addEventListener('keydown', e => {
   if (e.code === 'F1') { e.preventDefault(); yardimAc(); return; }
@@ -492,7 +499,7 @@ function gostergeler() {
   const sira = oyun.sk.findIndex(r => r[0] === oyun.benId), benim = oyun.sk[sira], lider = oyun.sk.find(r => r[0] !== oyun.benId);
   html('skorlar', `<span class="ben">Sen ${benim?.[1] ?? 0}</span><span>${sira + 1}. / ${oyun.sk.length || MAC.kisi}</span>${lider ? `<span>${kacis(adi(lider[0]))} ${lider[1]}</span>` : ''}`);
   if (!ben.canli && oyun.durum === 'oyun') yaz('olum-sayac', `Yeniden doğuş ${Math.max(0, Math.ceil(MAC.dogusBekle - (simdi() - oyun.olumZ)))}`);
-  if (oyun.durum === 'son') yaz('son-sayac', `Yeni koşu ${Math.max(0, Math.ceil(oyun.sonBitis - simdi()))} saniye sonra`);
+  if (oyun.durum === 'son' && bag.yerel) yaz('son-sayac', `Yeni koşu ${Math.max(0, Math.ceil(oyun.sonBitis - simdi()))} saniye sonra`);
   $('skor-tablo').hidden = !skorGoster || oyun.durum === 'son';
   if (skorGoster) html('skor-satir', oyun.sk.map(([id, puan, les, olum], i) => satir(i + 1, id, puan, les, olum)).join(''));
   $('nisangah').classList.toggle('gizli', !ben.canli);
@@ -535,55 +542,165 @@ function haritaCiz() {
   const [x, y] = hm(ben.x, ben.z); hc.save(); hc.translate(x, y); hc.rotate(-ben.yaw); hc.fillStyle = '#ffcf5a'; hc.beginPath(); hc.moveTo(0, -6); hc.lineTo(4, 4); hc.lineTo(-4, 4); hc.closePath(); hc.fill(); hc.restore();
 }
 
-// ——— Çevrim içi: lobi ———
+// ——— Çevrim içi: ana ekrandaki ÇEVRİM İÇİ bölümü, açık odalar ve bekleme odası (josephuz oda standardı) ———
+// Tek WebSocket (lobiBag) hem listeyi hem odayı hem koşuyu taşır. Sunucu listeyi değişince kendisi yollar (yoklama yok).
+// Odadayken adres ?oda=KOD gösterir; jeton sessionStorage'da durur, sayfa yenilenince aynı koltuğa dönülür.
 let lobiBag = null, lobiAcik = false, lobiDeneme = 0, lobiListe = { odalar: [], cevrimici: 0 };
+let odaDurum = null, tasiSecili = null, suruklenen = null;
+const oturum = {
+  al() { try { return JSON.parse(sessionStorage.getItem('karanal.oda')); } catch { return null; } },
+  yaz(v) { try { if (v) sessionStorage.setItem('karanal.oda', JSON.stringify(v)); else sessionStorage.removeItem('karanal.oda'); } catch { /* yok */ } },
+};
+const durumYaz = t => { $('cevrim-durum').textContent = t; };
+const cevrimIci = () => !!(oyun && lobiBag && bag === lobiBag);
+const adresKodu = () => new URLSearchParams(location.search).get('oda');
+const adresTemizle = () => { if (adresKodu() != null) history.replaceState(null, '', location.pathname); };
+const davetLinki = kod => location.origin + location.pathname + '?oda=' + kod;
+
 function lobiBaglan() {
   if (lobiBag || PARAM.has('cevrimdisi')) return;
-  lobiBag = sunucuBaglanti(d => {
-    if (d === 'acik') { lobiAcik = true; lobiBag.gonder({ t: 'lobi' }); lobiYaz(); const kod = PARAM.get('oda'); if (kod && !oyun) odayaGir({ t: 'kod', kod }); }
-    else { const oyundaydi = oyun && bag === lobiBag; lobiAcik = false; lobiBag = null; lobiYaz(); if (oyundaydi) { oyunBitir(); toast('Sunucu bağlantısı koptu.'); } setTimeout(lobiBaglan, Math.min(30000, 5000 * ++lobiDeneme)); }
+  const b = lobiBag = sunucuBaglanti(d => {
+    if (d === 'acik') {
+      lobiAcik = true; lobiDeneme = 0; b.gonder({ t: 'lobi' }); lobiYaz();
+      const kayit = oturum.al(), kod = adresKodu() ? kodDuzelt(adresKodu()) : null;
+      if (kayit?.kod && (!kod || kod === kayit.kod)) { durumYaz('Odaya geri bağlanıyor…'); istek({ t: 'don', kod: kayit.kod, jeton: kayit.jeton }); }
+      else if (kod) { durumYaz('Odaya bağlanıyor…'); istek({ t: 'kod', kod }); }
+      return;
+    }
+    const oyundaydi = oyun && bag === b, odadaydi = oyundaydi || !!odaDurum;
+    lobiAcik = false; lobiBag = null;
+    if (oyundaydi) oyunKapat();
+    if (odadaydi) { odaDurum = null; bekleGizle(); anaGoster(); toast('Sunucu bağlantısı koptu.'); }
+    lobiYaz();
+    setTimeout(lobiBaglan, Math.min(30000, 5000 * ++lobiDeneme));
   });
 }
+function istek(m) { if (lobiAcik) lobiBag.gonder({ ...m, ad: secim.ad, avatar: avatarim(), zorluk: secim.zorluk }); }
 function lobiYenile() { if (lobiAcik) lobiBag.gonder({ t: 'lobi' }); }
-function lobiIsle(m) { lobiDeneme = 0; lobiListe = m; lobiYaz(); }
+
+/** Sunucudan gelen her mesaj: liste ve oda burada, koşu mesajları isle()'ye. */
+function agMesaj(m) {
+  switch (m.t) {
+    case 'lobi': lobiListe = m; lobiYaz(); return;
+    case 'katildi':
+      oturum.yaz({ kod: m.kod, jeton: m.jeton }); durumYaz('');
+      history.replaceState(null, '', '?oda=' + m.kod); return;
+    case 'oda': odaDurum = m; if (!cevrimIci()) bekleGoster(); return;
+    case 'hata':
+      if (cevrimIci()) return;
+      durumYaz(m.m);
+      if (!odaDurum) { oturum.yaz(null); adresTemizle(); }
+      return;
+    case 'hosgeldin': if (oyun) oyunKapat(); bekleGizle(); oyunBaslat(lobiBag); break;
+  }
+  if (cevrimIci()) isle(m);
+}
+
 function lobiYaz() {
-  const b = $('cevrimici'); b.disabled = !lobiAcik;
-  $('cevrimici-durum').textContent = !lobiAcik ? 'Yakında' : lobiListe.oyunda > 0 ? `${lobiListe.oyunda} oyunda` : 'Aç';
-  const k = $('odalar'); k.innerHTML = '';
-  if (!lobiListe.odalar?.length) { k.innerHTML = '<div class="bos">Şu an açık oda yok. Hızlı katıl yeni bir oda kurar.</div>'; return; }
-  for (const o of lobiListe.odalar) {
-    const e = document.createElement('button'); e.className = 'oda'; e.disabled = o.insan >= o.kisi;
-    e.innerHTML = `<span><b></b><br><small>${o.insan}/${o.kisi} binici · ${ZORLUK[o.zorluk]?.ad ?? ''} botlar · koşu sürüyor, bir botun yerine geçersin</small></span><em>${o.insan >= o.kisi ? 'DOLU' : 'KATIL →'}</em>`;
-    e.querySelector('b').textContent = o.ad;
-    e.onclick = () => odayaGir({ t: 'katil', oda: o.id });
+  $('cevrim').classList.toggle('kapali', !lobiAcik);
+  for (const id of ['hizli', 'oda-kur', 'odaya-katil']) $(id).disabled = !lobiAcik;
+  if (!lobiAcik) $('kod-satir').hidden = true;
+  $('cevrimici-sayi').textContent = lobiAcik ? `● ${lobiListe.cevrimici ?? 0} çevrim içi` : '';
+  $('acik-odalar').hidden = !lobiAcik;
+  const l = lobiListe.odalar ?? [], k = $('odalar');
+  $('oda-sayi').textContent = l.length ? String(l.length) : '';
+  k.innerHTML = '';
+  if (!l.length) { k.innerHTML = '<div class="bos">Şu an açık oda yok. Hızlı katıl yeni bir oda kurar.</div>'; return; }
+  for (const o of l) {
+    const dolu = o.n >= o.max, e = document.createElement('button');
+    e.className = 'oda'; e.disabled = dolu;
+    e.innerHTML = `<span class="oda-ad"><b></b><small>${ZORLUK[o.zorluk]?.ad ?? ''} botlar · ${o.n}/${o.max} binici</small></span><em class="oda-durum${o.durum === 'mac' ? ' macta' : ''}">${o.durum === 'mac' ? 'MAÇTA' : 'LOBİDE'}</em><em class="oda-katil">${dolu ? 'DOLU' : 'KATIL →'}</em>`;
+    e.querySelector('b').textContent = o.kuran;
+    e.onclick = () => { durumYaz('Odaya bağlanıyor…'); istek({ t: 'kod', kod: o.kod }); };
     k.append(e);
   }
 }
-function odayaGir(m) {
-  if (!lobiAcik) return;
-  lobiBag.gonder({ ...m, ad: secim.ad, avatar: avatarim(), zorluk: secim.zorluk });
-  if ($('lobi-dialog').open) $('lobi-dialog').close();
-  oyunBaslat(lobiBag);
+$('hizli').onclick = () => { if (!lobiAcik) return; durumYaz('Oda aranıyor…'); istek({ t: 'hizli' }); };
+$('oda-kur').onclick = () => { if (!lobiAcik) return; durumYaz('Oda kuruluyor…'); istek({ t: 'kur' }); };
+$('odaya-katil').onclick = () => { const s = $('kod-satir'); s.hidden = !s.hidden; if (!s.hidden) $('kod').focus(); };
+function kodlaKatil() {
+  const kod = kodDuzelt($('kod').value);
+  if (!kodYeterli(kod)) { durumYaz('Oda kodunu yaz'); $('kod').focus(); return; }
+  $('kod').value = kod; durumYaz('Odaya bağlanıyor…'); istek({ t: 'kod', kod });
 }
-$('cevrimici').onclick = () => { lobiYenile(); $('lobi-dialog').showModal(); };
-$('hizli').onclick = () => odayaGir({ t: 'hizli' });
-$('oda-kur').onclick = () => odayaGir({ t: 'kur', ozel: $('ozel').checked });
-$('kod-katil').onclick = () => { const kod = $('kod').value.trim().toUpperCase(); if (kod.length >= 4) odayaGir({ t: 'kod', kod }); else toast('Oda kodu 4 harf.'); };
-setInterval(() => { if (!oyun && $('lobi-dialog').open) lobiYenile(); }, 3000);
+$('kod-katil').onclick = kodlaKatil;
+$('kod').onkeydown = e => { if (e.key === 'Enter') kodlaKatil(); };
+$('kod').oninput = () => { const e = $('kod'), p = e.selectionStart; e.value = e.value.toUpperCase(); e.setSelectionRange(p, p); };
+
+// ——— Bekleme odası: üstte kod ve link, 10 koltuk, kuranın ayarları, MAÇI BAŞLAT ↗ / Odadan çık ———
+function anaGoster() { $('ana').hidden = false; $('bekleme').hidden = true; lobiYaz(); lobiYenile(); }
+function bekleGizle() { $('bekleme').hidden = true; tasiSecili = null; }
+function bekleGoster() {
+  const d = odaDurum; if (!d) return;
+  $('ana').hidden = true; $('bekleme').hidden = false;
+  const kuran = d.kuran === d.ben, kutu = $('koltuklar');
+  $('b-goz').textContent = `ODA · ${ZORLUK[d.zorluk]?.ad ?? ''} botlar`;
+  $('b-kod').textContent = d.kod;
+  $('b-gorunur').textContent = d.ozel ? 'ÖZEL ODA · yalnız kodla' : 'AÇIK ODA · listede görünür';
+  if (!kuran || !d.koltuk.some(k => k && k.u === tasiSecili)) tasiSecili = null;
+  kutu.innerHTML = ''; kutu.classList.toggle('kuran', kuran);
+  d.koltuk.forEach((k, i) => {
+    const e = document.createElement('button'); e.type = 'button';
+    e.className = 'koltuk ' + (k ? 'dolu' : 'bos') + (k?.u === d.ben ? ' sen' : '') + (k?.koptu ? ' koptu' : '') + (k && k.u === tasiSecili ? ' secili' : '');
+    e.innerHTML = `<i>${i + 1}</i>` + (k
+      ? `<b></b>${k.u === d.kuran ? '<small>kuran</small>' : ''}${k.u === d.ben ? '<small class="sen">sen</small>' : ''}${k.koptu ? '<small class="kop">koptu</small>' : ''}`
+      : '<span class="bot-yazi">Bot · boş koltuk</span><span class="otur-yazi">Buraya otur</span>');
+    if (k) e.querySelector('b').textContent = k.ad;
+    e.onclick = () => koltukTik(i);
+    if (kuran) {
+      if (k) {
+        e.draggable = true;
+        e.ondragstart = ev => { suruklenen = k.u; ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(k.u)); e.classList.add('surukle'); };
+        e.ondragend = () => { suruklenen = null; e.classList.remove('surukle'); for (const x of kutu.querySelectorAll('.birak')) x.classList.remove('birak'); };
+      }
+      e.ondragover = ev => { if (suruklenen != null && k?.u !== suruklenen) { ev.preventDefault(); e.classList.add('birak'); } };
+      e.ondragleave = () => e.classList.remove('birak');
+      e.ondrop = ev => { ev.preventDefault(); e.classList.remove('birak'); if (suruklenen != null && k?.u !== suruklenen) lobiBag?.gonder({ t: 'tasi', u: suruklenen, i }); suruklenen = null; };
+    }
+    kutu.append(e);
+  });
+  for (const b of $('b-zorluk').children) { b.classList.toggle('secili', b.dataset.v === d.zorluk); b.disabled = !kuran; }
+  for (const b of $('b-ozel').children) { b.classList.toggle('secili', (b.dataset.v === '1') === d.ozel); b.disabled = !kuran; }
+  const insan = d.koltuk.filter(Boolean).length;
+  $('b-bilgi').textContent = `${insan} insan · ${MAC.kisi - insan} bot · koltuk sırası çıkış dizilişi`;
+  $('b-ipucu').textContent = tasiSecili != null ? 'Taşınacak koltuğa tıkla' : kuran ? 'Oyuncuyu sürükleyip bırak ya da tıkla, sonra koltuğa tıkla.' : 'Boş koltuğa tıklayıp oraya geçebilirsin.';
+  $('b-basla').hidden = !kuran; $('b-bekle').hidden = kuran;
+}
+function koltukTik(i) {
+  const d = odaDurum; if (!d || d.durum !== 'lobi') return;
+  const k = d.koltuk[i], kuran = d.kuran === d.ben;
+  if (kuran && tasiSecili != null) { if (k?.u !== tasiSecili) lobiBag?.gonder({ t: 'tasi', u: tasiSecili, i }); tasiSecili = null; bekleGoster(); return; }
+  if (!k) { lobiBag?.gonder({ t: 'otur', i }); return; }
+  if (kuran) { tasiSecili = k.u; bekleGoster(); }
+}
+for (const b of $('b-zorluk').children) b.onclick = () => lobiBag?.gonder({ t: 'ayar', zorluk: b.dataset.v });
+for (const b of $('b-ozel').children) b.onclick = () => lobiBag?.gonder({ t: 'ayar', ozel: b.dataset.v === '1' });
+$('b-basla').onclick = () => lobiBag?.gonder({ t: 'basla' });
+$('b-cik').onclick = () => odadanCik();
+$('b-link').onclick = () => {
+  const b = $('b-link'), u = davetLinki(odaDurum?.kod ?? ''), yaz = () => { $('b-ipucu').textContent = u; };
+  try { navigator.clipboard.writeText(u).then(() => { b.textContent = 'Link kopyalandı'; setTimeout(() => { b.textContent = 'Linki kopyala'; }, 1600); }, yaz); } catch { yaz(); }
+};
+/** Odadan çık: koltuk boşalır, ?oda ve jeton silinir, ana ekrana dönülür. */
+function odadanCik() {
+  if (lobiAcik) lobiBag.gonder({ t: 'cik' });
+  odaDurum = null; oturum.yaz(null); adresTemizle();
+  oyunKapat(); bekleGizle(); anaGoster();
+}
 
 // ——— Döngü ———
 let onceki = simdi();
 function dongu() {
   requestAnimationFrame(dongu);
   const zaman = simdi(), dt = Math.min(0.05, zaman - onceki); onceki = zaman;
-  if (lobiBag && bag !== lobiBag) for (const m of lobiBag.al()) if (m.t === 'lobi') lobiIsle(m);
+  if (lobiBag) for (const m of lobiBag.al()) agMesaj(m);
   if (!oyun) { if (demo) demoAdim(dt, zaman); const d = demo && demoAra.get(demoTakip); gor.cizim(dt, zaman, d ? { x: d[1], y: d[2], z: d[3] } : null); return; }
   const durdu = bag.yerel && (menuAcik || $('help-dialog').open);
   if (bag.yerel && !durdu) {
     oyun.birikim = Math.min(oyun.birikim + dt, 0.2);
     while (oyun.birikim >= 1 / MAC.tik) { oyun.birikim -= 1 / MAC.tik; bag.adim(1 / MAC.tik); }
   }
-  for (const m of bag.al()) isle(m);
+  if (bag.yerel) for (const m of bag.al()) isle(m);
   if (!oyun) return;
   if (!durdu) kendiAdim(dt, zaman);
   digerleriniCiz(dt, zaman);
@@ -599,4 +716,4 @@ lobiYaz();
 requestAnimationFrame(dongu);
 // Test ve otomatik oynatma için: ?otomatik=1 botlu koşuyu hemen başlatır.
 if (PARAM.has('otomatik')) oyunBaslat(yerelBaglanti({ ad: secim.ad, avatar: avatarim(), zorluk: secim.zorluk }));
-window.__karanal = { ben, get oyun() { return oyun; }, get bag() { return bag; }, gor, tus, fare, isinla: u => { atYerlestir(ben, u, 0); ben.bakis = ben.yaw; } };
+window.__karanal = { ben, get oyun() { return oyun; }, get bag() { return bag; }, get odaDurum() { return odaDurum; }, gor, tus, fare, isinla: u => { atYerlestir(ben, u, 0); ben.bakis = ben.yaw; } };

@@ -20,8 +20,9 @@ const bos = () => ({ sal: SALDIRI.map(() => 0), sav: SAVUNMA.map(() => 0) });
 function sec(liste, r) { const t = liste.reduce((a, s) => a + s.agirlik, 0); let k = r() * t; for (let i = 0; i < liste.length; i++) { k -= liste[i].agirlik; if (k <= 0) return i; } return liste.length - 1; }
 
 export class Mac {
-  constructor({ kisi = MAC.kisi, rastgele = Math.random, sure = MAC.sure, zorluk = 'orta' } = {}) {
-    this.kisi = kisi; this.r = rastgele; this.sure = sure; this.zorluk = ZORLUK[zorluk] ? zorluk : 'orta';
+  /** tekKosu: koşu bitince yenisi kendiliğinden başlamaz (çevrim içi oda bekleme odasına döner). */
+  constructor({ kisi = MAC.kisi, rastgele = Math.random, sure = MAC.sure, zorluk = 'orta', tekKosu = false } = {}) {
+    this.kisi = kisi; this.r = rastgele; this.sure = sure; this.zorluk = ZORLUK[zorluk] ? zorluk : 'orta'; this.tekKosu = tekKosu;
     this.z = 0; this.oyuncular = new Map(); this.sira = 1; this.no = 1;
     this.olaylar = []; // { kime: id | null (herkes) | -id (o hariç herkes), m }
     this.noktalar = noktalar(MAC.noktaSayisi); this.aralik = L / MAC.noktaSayisi;
@@ -66,6 +67,8 @@ export class Mac {
     Object.assign(o, { nokta: 0, canli: true, can: MAC.can, zirh: 0, korumaZ: this.z + MAC.dogusKoruma, ...bos(), salSec: -1, savSec: -1, bagId: null });
     this.dogusYolla(o);
   }
+  /** Başlangıç dizilişini verilen sıraya göre kurar (çevrim içi odada koltuk sırası = çıkış sırası). */
+  diz(sira) { this.izgara = 0; for (const id of sira) { const o = this.oyuncular.get(id); if (o) this.baslangicaKoy(o); } }
   /** Son geçilen kapıda yeniden doğuş: önde mi arkada mı olduğunu bilemezsin. */
   noktadaDogur(o) {
     const u = o.nokta * this.aralik, w = pistNoktasi(u).w / 2 - AT.kenarPay - 0.5;
@@ -202,7 +205,7 @@ export class Mac {
 
   adim(dt) {
     this.z += dt;
-    if (this.durum === 'son') { if (this.z >= this.sonZ) this.yeniMac(); return; }
+    if (this.durum === 'son') { if (!this.tekKosu && this.z >= this.sonZ) this.yeniMac(); return; }
     const l = [...this.oyuncular.values()];
     // Botlar
     for (const o of l) {
