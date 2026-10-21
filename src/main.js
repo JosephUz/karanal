@@ -5,7 +5,7 @@
 import * as T from 'three';
 import { AT, MAC, SALDIRI, SAVUNMA, ZORLUK, PUAN } from './ayar.js';
 import { atDurumu, atAdim, atYerlestir, itis } from './at.js';
-import { P, pistNoktasi, noktalar, sinir, BOLUM_AD } from './pist.js';
+import { P, pistNoktasi, noktalar, sinir, BOLUM_AD, yansit, dunya, sFark, engelde } from './pist.js';
 import { biniciyeIsin, engeleIsin, zemineIsin, tohumlu, saptir } from './fizik.js';
 import { Gorunum } from './sahne.js';
 import { biniciModeli } from './karakter.js';
@@ -78,8 +78,8 @@ $('hassasiyet').oninput = () => { hassas = +$('hassasiyet').value; sakla.yaz('ha
 
 // ——— Ana ekran arka planı: botlar koşar ve çatışır, kamera sırayla birinin peşine takılır ———
 let demo = null, demoBirikim = 0, demoTakip = 1, demoT = 0;
-const demoKam = new T.Vector3(), demoBak = new T.Vector3(), demoHedef = new T.Vector3(), demoHedef2 = new T.Vector3();
-const demoOnce = new Map(), demoAra = new Map();
+const demoKam = new T.Vector3(), demoBak = new T.Vector3(), demoHedef2 = new T.Vector3();
+const demoOnce = new Map(), demoAra = new Map(), demoKamS = { s: 0, yanal: 0 };
 const BOS_DUNYA = { k: [], g: [], m: [], c: [], d: [], n: [] };
 function demoBaslat() {
   demo = new Mac({}); demo.botlariDuzenle(); demo.olaylar.length = 0;
@@ -116,12 +116,20 @@ function demoAdim(dt, z) {
   if ((demoT -= dt) <= 0) { demoT = 9; const l = [...demo.oyuncular.values()].filter(o => o.canli); demoTakip = l[Math.floor(Math.random() * l.length)]?.id ?? 1; demoKam.set(0, 0, 0); }
   const d = demoAra.get(demoTakip); if (!d) return;
   const [, ox, oy, oz, oyaw] = d, ilk = demoKam.lengthSq() === 0;
-  const a = oyaw + Math.PI * 0.82 + Math.sin(z * 0.15) * 0.5;
-  demoHedef.set(ox + Math.sin(a) * 9.5, oy + 3.8, oz + Math.cos(a) * 9.5);
-  const bak = demoHedef2.set(ox - Math.sin(oyaw) * 4, oy + 1.6, oz - Math.cos(oyaw) * 4);
-  // Kamera ve bakış noktası yumuşak izler: botun ani dönüşleri ekranı sarsmasın
-  if (ilk) { demoKam.copy(demoHedef); demoBak.copy(bak); }
-  else { demoKam.lerp(demoHedef, 1 - Math.exp(-dt * 2.5)); demoBak.lerp(bak, 1 - Math.exp(-dt * 6)); }
+  // Kamera pist koordinatında: binicinin arkasında, hep çitin içinde (dışarıda kaya sütunları objektifin önünden geçip ekranı kırpıştırıyordu)
+  const yer = yansit(ox, oz, demo.oyuncular.get(demoTakip)?.s ?? null);
+  const hs = yer.s - (7.5 + Math.sin(z * 0.11) * 1.5), hp = pistNoktasi(hs), sin = hp.w / 2 - 0.7;
+  const hy = Math.max(-sin, Math.min(sin, yer.yanal + Math.sin(z * 0.15) * 2.6));
+  if (ilk || Math.abs(sFark(demoKamS.s, hs)) > 20) Object.assign(demoKamS, { s: hs, yanal: hy });
+  demoKamS.s += sFark(demoKamS.s, hs) * (1 - Math.exp(-dt * 3)); demoKamS.yanal += (hy - demoKamS.yanal) * (1 - Math.exp(-dt * 2));
+  // Kameranın başını aşan engel (şelaledeki kaya ada): yanından geçir
+  const ada = engelde(demoKamS.s, demoKamS.yanal, 0.8);
+  if (ada && ada.h > 3) demoKamS.yanal = demoKamS.yanal < (ada.a0 + ada.a1) / 2 ? Math.min(demoKamS.yanal, ada.a0 - 0.8) : Math.max(demoKamS.yanal, ada.a1 + 0.8);
+  const kp = dunya(demoKamS.s, demoKamS.yanal);
+  demoKam.set(kp.x, kp.y + 3.4, kp.z);
+  const bak = demoHedef2.set(ox - Math.sin(oyaw) * 4, oy + 1.4, oz - Math.cos(oyaw) * 4);
+  // Bakış noktası yumuşak izler: botun ani dönüşleri ekranı sarsmasın
+  if (ilk) demoBak.copy(bak); else demoBak.lerp(bak, 1 - Math.exp(-dt * 6));
   gor.kamera.position.copy(demoKam); gor.kamera.lookAt(demoBak); gor.fov = 60;
 }
 
