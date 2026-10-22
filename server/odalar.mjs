@@ -16,6 +16,9 @@ import { adDuzelt, avatarDuzelt } from '../src/avatar-veri.js';
  * Kod KPRT-4 biçimindedir. Özel oda listede görünmez, yalnız kodla ya da linkle (?oda=KOD) girilir. Her üyeye bir
  * jeton verilir: bağlantısı kopan üye `kopmaSure` boyunca koltuğunu tutar ('koptu'), jetonla dönerse geri alır.
  * Kuran çıkınca kuranlık sıradaki insana geçer; insan kalmayınca oda kapanır.
+ *
+ * Hata mesajları dil bağımsız bir kod taşır (josephuz dil standardı): { t: 'hata', kod: 'oda.yok', m: 'Böyle bir oda yok' };
+ * istemci sözlükteki 'sunucu.<kod>' yazısını gösterir, yoksa m'yi.
  */
 export function createRooms({ log = () => {}, sure, kopmaSure = 60000 } = {}) {
   const odalar = new Map(), baglar = new Set();
@@ -59,7 +62,7 @@ export function createRooms({ log = () => {}, sure, kopmaSure = 60000 } = {}) {
   function macaSok(r, u) { u.id = r.oda.katil(m => u.b?.yolla(JSON.stringify(m)), u.ad, u.avatar); }
 
   function gir(b, r, m) {
-    if (uyeler(r).length >= KISI) { yolla(b, { t: 'hata', m: 'Oda dolu' }); return; }
+    if (uyeler(r).length >= KISI) { yolla(b, { t: 'hata', kod: 'oda.dolu', m: 'Oda dolu' }); return; }
     ayril(b);
     const u = { u: uyeNo++, jeton: randomBytes(12).toString('hex'), ad: adDuzelt(m.ad) || 'Binici', avatar: avatarDuzelt(m.avatar), b, id: null, kopT: null };
     r.koltuk[r.koltuk.indexOf(null)] = u; b.uye = u; b.r = r;
@@ -73,7 +76,7 @@ export function createRooms({ log = () => {}, sure, kopmaSure = 60000 } = {}) {
   /** Jetonla geri dönüş: koltuk tutuluyorsa geri alınır, yoksa sıradan katılım. */
   function don(b, m) {
     const r = odalar.get(kodDuzelt(m.kod));
-    if (!r) { yolla(b, { t: 'hata', m: 'Böyle bir oda yok' }); return; }
+    if (!r) { yolla(b, { t: 'hata', kod: 'oda.yok', m: 'Böyle bir oda yok' }); return; }
     const u = typeof m.jeton === 'string' && uyeler(r).find(x => x.jeton === m.jeton);
     if (!u) { gir(b, r, m); return; }
     ayril(b);
@@ -175,7 +178,7 @@ export function createRooms({ log = () => {}, sure, kopmaSure = 60000 } = {}) {
         if (b.uye) { odaMesaji(b, m); return; }
         if (m.t === 'lobi') yolla(b, ozet());
         else if (m.t === 'kur') gir(b, odaKur(m.zorluk), m);
-        else if (m.t === 'kod') { const r = odalar.get(kodDuzelt(m.kod)); if (r) gir(b, r, m); else yolla(b, { t: 'hata', m: 'Böyle bir oda yok' }); }
+        else if (m.t === 'kod') { const r = odalar.get(kodDuzelt(m.kod)); if (r) gir(b, r, m); else yolla(b, { t: 'hata', kod: 'oda.yok', m: 'Böyle bir oda yok' }); }
         else if (m.t === 'don') don(b, m);
         else if (m.t === 'hizli') {
           const uygun = [...odalar.values()].filter(r => !r.ozel && uyeler(r).length < KISI)

@@ -54,11 +54,11 @@ test('kodla katıl: bilinmeyen ve eski 4 harflik kod "Böyle bir oda yok", bozuk
   try {
     const a = sahteWs(); odalar.attach(a);
     a.dinle.message('{bozuk'); a.yolla({ t: 'kod', kod: 'ZZZZ' });
-    assert.equal(a.son('hata').m, 'Böyle bir oda yok');
+    assert.equal(a.son('hata').m, 'Böyle bir oda yok'); assert.equal(a.son('hata').kod, 'oda.yok');
     a.yolla({ t: 'kod', kod: 'ZZZZ-9' }); assert.equal(a.son('hata').m, 'Böyle bir oda yok');
     const k = sahteWs(); odalar.attach(k); k.yolla({ t: 'kur', ad: 'Kuran' }); const kod = k.son('katildi').kod;
     for (let i = 0; i < 9; i++) { const w = sahteWs(); odalar.attach(w); w.yolla({ t: 'kod', kod, ad: 'O' + i }); assert.ok(w.son('katildi')); }
-    a.yolla({ t: 'kod', kod, ad: 'Fazla' }); assert.equal(a.son('hata').m, 'Oda dolu');
+    a.yolla({ t: 'kod', kod, ad: 'Fazla' }); assert.equal(a.son('hata').m, 'Oda dolu'); assert.equal(a.son('hata').kod, 'oda.dolu');
   } finally { odalar.kapat(); }
 });
 

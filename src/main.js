@@ -14,6 +14,10 @@ import { cal, calKonum, sesAcik, sesAyarla, sesBaslat } from './ses.js';
 import { yerelBaglanti, sunucuBaglanti } from './ag.js';
 import { Mac } from './mac.js';
 import { kodDuzelt, kodYeterli } from './kod.js';
+import { t, DIL, DILLER, sayi, dilUygula, dilDugmesi } from './dil.js';
+
+dilUygula();
+dilDugmesi(document.getElementById('dil'));
 
 const $ = id => document.getElementById(id);
 const sakla = { al(k, v) { try { return localStorage.getItem('karanal.' + k) ?? v; } catch { return v; } }, yaz(k, v) { try { localStorage.setItem('karanal.' + k, v); } catch { /* yok */ } } };
@@ -21,16 +25,23 @@ const simdi = () => performance.now() / 1000;
 const aci = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 const PARAM = new URLSearchParams(location.search);
 const GOZ = 2.25;
+/** Arayüz yazısını büyük harfe çevirir (dilin kuralıyla). Özel adlar (binici adları) hep Türkçe kuralla: adBuyuk. */
+const buyuk = s => String(s).toLocaleUpperCase(DIL === 'tr' ? 'tr' : 'en');
+const adBuyuk = s => String(s).toLocaleUpperCase('tr');
+// Değişken anahtarlar (silah.<id>, zorluk.<id>, model.<id>, sunucu.<kod>) tAd ile: denetim t('…' + x) biçimini eksik anahtar sayıyor.
+const tAd = (bolum, id) => t(bolum + '.' + id);
+const silahAd = S => tAd('silah', S.id);
+const zorlukAd = z => (ZORLUK[z] ? tAd('zorluk', z) : '');
 const kacis = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let gor;
-try { gor = new Gorunum($('sahne')); } catch (e) { $('fatal').hidden = false; $('fatal-message').textContent = 'Tarayıcın WebGL açamadı: ' + (e?.message ?? e); throw e; }
+try { gor = new Gorunum($('sahne')); } catch (e) { $('fatal').hidden = false; $('fatal-message').textContent = t('hata.webgl', { e: e?.message ?? e }); throw e; }
 const boyutla = () => gor.boyut(innerWidth, innerHeight); addEventListener('resize', boyutla); boyutla();
 
 // ——— Seçimler ———
 const secim = {
   model: MODELLER.some(m => m.id === sakla.al('model')) ? sakla.al('model') : MODELLER[Math.floor(Math.random() * MODELLER.length)].id,
-  ad: adDuzelt(sakla.al('ad', '')) || 'Binici' + Math.floor(100 + Math.random() * 900),
+  ad: adDuzelt(sakla.al('ad', '')) || t('ana.varsayilanAd') + Math.floor(100 + Math.random() * 900),
   zorluk: ZORLUK[sakla.al('zorluk')] ? sakla.al('zorluk') : 'orta',
 };
 let hassas = Math.max(0.3, Math.min(3, +sakla.al('hassas', '1') || 1));
@@ -51,8 +62,8 @@ function anaEkranKur() {
   let resim = {}; try { resim = portreler(); } catch { /* portre yoksa yalnız ad */ }
   const kutu = $('karakterler');
   for (const m of MODELLER) {
-    const b = document.createElement('button'); b.className = 'kart'; b.setAttribute('role', 'radio'); b.dataset.v = m.id; b.title = m.ad;
-    b.innerHTML = (resim[m.id] ? `<img alt="" src="${resim[m.id]}">` : '') + `<span>${m.ad}</span>`;
+    const b = document.createElement('button'); b.className = 'kart'; b.setAttribute('role', 'radio'); b.dataset.v = m.id; b.title = tAd('model', m.id);
+    b.innerHTML = (resim[m.id] ? `<img alt="" src="${resim[m.id]}">` : '') + `<span>${kacis(tAd('model', m.id))}</span>`;
     b.onclick = () => { secim.model = m.id; sakla.yaz('model', m.id); kartlar(); };
     kutu.append(b);
   }
@@ -67,15 +78,16 @@ function anaEkranKur() {
 }
 
 // ——— Ses, yardım, menü düğmeleri ———
-function sesYaz() { for (const id of ['sound', 'pause-sound']) { $(id).textContent = 'Ses: ' + (sesAcik() ? 'açık' : 'kapalı'); $(id).classList.toggle('muted', !sesAcik()); } }
+function sesYaz() { for (const id of ['sound', 'pause-sound']) { $(id).textContent = t(sesAcik() ? 'ses.acik' : 'ses.kapali'); $(id).classList.toggle('muted', !sesAcik()); } }
 for (const id of ['sound', 'pause-sound']) $(id).onclick = () => { sesAyarla(!sesAcik()); sesYaz(); };
 sesYaz();
 const yardimAc = () => { if (!$('help-dialog').open) $('help-dialog').showModal(); };
 $('help').onclick = yardimAc; $('pause-help').onclick = yardimAc;
 for (const b of document.querySelectorAll('[data-close]')) b.onclick = () => b.closest('dialog').close();
 $('brand').onclick = e => e.preventDefault();
-$('hassasiyet').value = hassas; $('hassasiyet-deger').textContent = hassas.toFixed(2).replace('.', ',');
-$('hassasiyet').oninput = () => { hassas = +$('hassasiyet').value; sakla.yaz('hassas', hassas); $('hassasiyet-deger').textContent = hassas.toFixed(2).replace('.', ','); };
+const hassasYaz = () => { $('hassasiyet-deger').textContent = sayi(hassas, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+$('hassasiyet').value = hassas; hassasYaz();
+$('hassasiyet').oninput = () => { hassas = +$('hassasiyet').value; sakla.yaz('hassas', hassas); hassasYaz(); };
 
 // ——— Ana ekran arka planı: botlar koşar ve çatışır, kamera sırayla birinin peşine takılır ———
 let demo = null, demoBirikim = 0, demoTakip = 1, demoT = 0;
@@ -147,8 +159,8 @@ function oyunBaslat(baglanti) {
   oyun = { benId: null, roster: new Map(), kalan: MAC.sure, kalanZ: simdi(), durum: 'oyun', snaps: [], fark: null, sk: [], sonBitis: 0, birikim: 0, olumZ: 0, olen: null, aranan: null, kod: null };
   document.body.classList.add('oyunda');
   $('ana').hidden = true; $('bekleme').hidden = true; $('oyun-ui').hidden = false; $('son').hidden = true; $('son-lobi').hidden = true; $('olum').hidden = true; $('lesler').innerHTML = '';
-  $('menu-ust').textContent = bag.yerel ? 'BOTLU KOŞU DURAKLATILDI' : 'ÇEVRİM İÇİ · KOŞU SÜRÜYOR';
-  $('back-home').textContent = bag.yerel ? 'Ana menü' : 'Odadan çık';
+  $('menu-ust').textContent = t(bag.yerel ? 'menu.duraklatildi' : 'menu.cevrimSuruyor');
+  $('back-home').textContent = t(bag.yerel ? 'menu.anaMenu' : 'oda.cik');
   $('oda-satir').hidden = true;
   sesBaslat(); cal('basla', 0.7);
   kilitle();
@@ -197,15 +209,15 @@ function isle(m) {
     case 'dogus':
       Object.assign(ben, atDurumu(), { x: m.x, y: m.y, z: m.z, yaw: m.yaw, bakis: m.yaw, pitch: -0.12, s: m.s, u: m.u, enIleri: m.u, canli: true, can: MAC.can, bagId: null });
       $('olum').hidden = true; oyun.olen = null; document.body.classList.remove('yarali');
-      if (m.nokta > 0) mesaj(`${m.nokta % MAC.noktaSayisi}. KAPIDAN ÇIKTIN`, 'Silah kutularına koş');
+      if (m.nokta > 0) mesaj(t('mesaj.dogus', { n: m.nokta % MAC.noktaSayisi }), t('mesaj.dogusAlt'));
       break;
     case 'duzelt': ben.x = m.x; ben.y = m.y; ben.z = m.z; ben.hiz = 0; break;
     case 'etki':
-      if (m.tur === 'topal') { ben.topalT = m.sure; mesaj('ÇİVİ!', 'Atın topallıyor'); cal('civi', 0.7); }
+      if (m.tur === 'topal') { ben.topalT = m.sure; mesaj(t('mesaj.civi'), t('mesaj.civiAlt')); cal('civi', 0.7); }
       else if (m.tur === 'mahmuz') { ben.mahmuzT = m.sure; ben.bagT = 0; ben.dayanim = AT.dayanim; }
-      else if (m.tur === 'bag') { ben.bagT = m.sure; ben.bagId = m.cek; mesaj('KEMENTLENDİN', `${adi(m.cek)} seni çekiyor · mahmuz çözer`); }
+      else if (m.tur === 'bag') { ben.bagT = m.sure; ben.bagId = m.cek; mesaj(t('mesaj.kement'), t('mesaj.kementAlt', { ad: adi(m.cek) })); }
       break;
-    case 'nokta': cal('nokta', 0.6); mesaj(m.n === 0 ? 'KARA NAL KAPISI' : `${m.n}. KAPI`, 'Yeni doğuş yerin'); break;
+    case 'nokta': cal('nokta', 0.6); mesaj(m.n === 0 ? t('mesaj.kapi0') : t('mesaj.kapi', { n: m.n }), t('mesaj.kapiAlt')); break;
     case 'sahlan': { const v = gor.oyuncular.get(m.id); if (v) calKonum('sahlan', v.x, v.y, v.z, dinleyici(), 50); break; }
     case 'isabet': {
       const i = $('isabet'); i.className = ''; void i.offsetWidth; i.className = 'vur' + (m.k ? ' kafa' : '') + (m.o ? ' olu' : '');
@@ -225,14 +237,14 @@ function isle(m) {
     case 'patla': { gor.patlama(new T.Vector3(m.x, m.y, m.z), m.a); calKonum('patla', m.x, m.y, m.z, dinleyici(), 110); const u = Math.hypot(m.x - ben.x, m.z - ben.z); if (u < 14) ben.sars = Math.max(ben.sars, 1 - u / 14); break; }
     case 'al': {
       cal('al', 0.7); const S = m.tur === 'sal' ? SALDIRI[m.i] : SAVUNMA[m.i];
-      mesaj('+ ' + S.ad.toLocaleUpperCase('tr'), m.tur === 'sal' ? `${m.c} ${m.i === 3 ? 'kement' : m.i === 4 ? 'dinamit' : 'mermi'} · sol tık` : `${m.c} adet · ${m.i + 1} ile seç, sağ tık`);
+      mesaj('+ ' + buyuk(silahAd(S)), m.tur === 'sal' ? t(S.id === 'kement' ? 'mesaj.alKement' : S.id === 'dinamit' ? 'mesaj.alDinamit' : 'mesaj.alMermi', { c: m.c }) : t('mesaj.alSavunma', { c: m.c, n: m.i + 1 }));
       break;
     }
     case 'kutu': calKonum('al', m.x, m.y, m.z, dinleyici(), 25); break;
-    case 'ganimet': cal('ganimet', 0.8); mesaj('GANİMET', 'Düşenin eşyaları senin'); break;
-    case 'aranan': oyun.aranan = m.id; cal('aranan', 0.6); if (m.id === oyun.benId) mesaj('ARANAN SENSİN', `Seni düşürene +${PUAN.aranan} ödül`); else mesaj(`${adi(m.id).toLocaleUpperCase('tr')} ARANIYOR`, `Düşürene +${PUAN.aranan} ödül`); break;
+    case 'ganimet': cal('ganimet', 0.8); mesaj(t('mesaj.ganimet'), t('mesaj.ganimetAlt')); break;
+    case 'aranan': oyun.aranan = m.id; cal('aranan', 0.6); if (m.id === oyun.benId) mesaj(t('mesaj.arananSen'), t('mesaj.arananSenAlt', { n: PUAN.aranan })); else mesaj(t('mesaj.aranan', { ad: adBuyuk(adi(m.id)) }), t('mesaj.arananAlt', { n: PUAN.aranan })); break;
     case 'son': sonGoster(m); break;
-    case 'basla': $('son').hidden = true; oyun.durum = 'oyun'; oyun.aranan = null; cal('basla', 0.7); mesaj('YENİ KOŞU', 'Herkes başlangıçta, eller boş'); break;
+    case 'basla': $('son').hidden = true; oyun.durum = 'oyun'; oyun.aranan = null; cal('basla', 0.7); mesaj(t('mesaj.yeniKosu'), t('mesaj.yeniKosuAlt')); break;
   }
 }
 const dinleyici = () => ({ x: ben.x, y: ben.y, z: ben.z, yaw: ben.bakis });
@@ -255,31 +267,32 @@ function kementGorseli(m, onEk = '') {
   gor.ip(v => { if (!a.canli) return false; v.set(a.x, a.y + 2, a.z); return true; }, v => { if (!h.canli) return false; v.set(h.x, h.y + 1.9, h.z); return true; }, m.sure);
 }
 
-const SILAH_AD = { carp: 'ÇARPIŞMA', mayin: 'MAYIN', civi: 'ÇİVİ', ...Object.fromEntries(SALDIRI.map(s => [s.id, s.ad.toLocaleUpperCase('tr')])) };
+const SILAH_AD = Object.fromEntries(['carp', 'mayin', 'civi', ...SALDIRI.map(s => s.id)].map(id => [id, buyuk(tAd('silah', id))]));
+const silahKucuk = id => (SILAH_AD[id] ? tAd('silah', id).toLocaleLowerCase(DIL === 'tr' ? 'tr' : 'en') : '');
 function lesYaz(m) {
   const d = document.createElement('div'); d.className = 'les' + (m.o === oyun.benId || m.h === oyun.benId ? ' benim' : '');
   d.innerHTML = m.o == null ? '<span></span><span class="s"></span>' : `<span></span><span class="s"></span><span></span>${m.k ? '<span class="kafa">◎</span>' : ''}${m.ar ? '<span class="ar">★</span>' : ''}`;
   const sp = d.querySelectorAll('span');
-  if (m.o == null) { sp[0].textContent = adi(m.h); sp[1].textContent = (SILAH_AD[m.s] ? SILAH_AD[m.s] + ' · ' : '') + 'DÜŞTÜ'; } else { sp[0].textContent = adi(m.o); sp[1].textContent = SILAH_AD[m.s] ?? ''; sp[2].textContent = adi(m.h); }
+  if (m.o == null) { sp[0].textContent = adi(m.h); sp[1].textContent = (SILAH_AD[m.s] ? SILAH_AD[m.s] + ' · ' : '') + t('mesaj.dustu'); } else { sp[0].textContent = adi(m.o); sp[1].textContent = SILAH_AD[m.s] ?? ''; sp[2].textContent = adi(m.h); }
   $('lesler').prepend(d); while ($('lesler').children.length > 6) $('lesler').lastChild.remove(); setTimeout(() => d.remove(), 5000);
   if (m.o === oyun.benId && m.h !== oyun.benId) {
     cal('les');
-    const SERI = { 3: 'ÜÇLEME', 5: 'KARA NAL EFSANESİ' };
-    if (m.ar) mesaj('ARANANI DÜŞÜRDÜN', `+${m.puan} puan`);
-    else if (SERI[m.seri]) { cal('seri'); mesaj(SERI[m.seri], `${m.seri} üst üste · +${m.puan} puan`); }
-    else mesaj(m.k ? 'KAFADAN!' : 'DÜŞÜRDÜN', `${adi(m.h)} · +${m.puan} puan`);
+    const SERI = { 3: t('mesaj.ucleme'), 5: t('mesaj.efsane') };
+    if (m.ar) mesaj(t('mesaj.arananiDusurdun'), t('mesaj.puan', { n: m.puan }));
+    else if (SERI[m.seri]) { cal('seri'); mesaj(SERI[m.seri], t('mesaj.seriAlt', { s: m.seri, n: m.puan })); }
+    else mesaj(t(m.k ? 'mesaj.kafadan' : 'mesaj.dusurdun'), t('mesaj.dusurdunAlt', { ad: adi(m.h), n: m.puan }));
   }
-  if (m.h === oyun.benId) { oyun.olen = m.o; $('olum-baslik').textContent = m.o == null ? (m.s === 'carp' ? 'Engele çarptın.' : 'Kendi tuzağına düştün.') : `${adi(m.o)} seni ${SILAH_AD[m.s]?.toLocaleLowerCase('tr') ?? ''} ile düşürdü.`; }
+  if (m.h === oyun.benId) { oyun.olen = m.o; $('olum-baslik').textContent = m.o == null ? t(m.s === 'carp' ? 'olum.carp' : 'olum.tuzak') : t('olum.dusurdu', { ad: adi(m.o), silah: silahKucuk(m.s) }); }
 }
 function olunce() {
   ben.canli = false; oyun.olumZ = simdi(); cal('olum', 0.8);
   $('olum').hidden = false; fare.sol = fare.sag = false;
-  if (!oyun.olen) $('olum-baslik').textContent = 'Attan düştün.';
-  $('olum-kapi').textContent = `Son kapın: ${Math.floor(ben.enIleri / (P.L / MAC.noktaSayisi)) % MAC.noktaSayisi}. Önde mi arkada mı çıkacaksın, bilemezsin. Eşyaların yerde kaldı.`;
+  if (!oyun.olen) $('olum-baslik').textContent = t('olum.dustun');
+  $('olum-kapi').textContent = t('olum.kapi', { n: Math.floor(ben.enIleri / (P.L / MAC.noktaSayisi)) % MAC.noktaSayisi });
 }
 function sonGoster(m) {
   oyun.durum = 'son'; oyun.sonBitis = simdi() + m.bekle;
-  $('son-baslik').textContent = m.kazanan === oyun.benId ? 'Kara Nal senin!' : `${adi(m.kazanan)} kazandı.`;
+  $('son-baslik').textContent = m.kazanan === oyun.benId ? t('son.sen') : t('son.kazandi', { ad: adi(m.kazanan) });
   $('son-satir').innerHTML = m.l.map(([id, puan, les, olum], i) => satir(i + 1, id, puan, les, olum)).join('');
   $('son').hidden = false;
   // Çevrim içi: oda bekleme odasına döndü; imleç serbest, LOBİYE DÖN ile koltuklara (kuran yeniden başlatır)
@@ -288,7 +301,7 @@ function sonGoster(m) {
   if (cevrim) { fare.sol = fare.sag = false; tus.clear(); $('kilit').hidden = true; if (document.pointerLockElement) document.exitPointerLock(); }
 }
 const sonucta = () => oyun?.durum === 'son' && !bag?.yerel;
-const satir = (no, id, puan, les, olum) => { const r = oyun.roster.get(id); return `<tr class="${id === oyun.benId ? 'ben' : ''}"><td>${no}</td><td>${kacis(r?.ad ?? '?')}${r?.bot ? '<span class="bot">BOT</span>' : ''}${oyun.aranan === id ? '<span class="arn">ARANAN</span>' : ''}</td><td>${puan}</td><td>${les}</td><td>${olum}</td></tr>`; };
+const satir = (no, id, puan, les, olum) => { const r = oyun.roster.get(id); return `<tr class="${id === oyun.benId ? 'ben' : ''}"><td>${no}</td><td>${kacis(r?.ad ?? '?')}${r?.bot ? `<span class="bot">${t('oyun.bot')}</span>` : ''}${oyun.aranan === id ? `<span class="arn">${t('oyun.aranan')}</span>` : ''}</td><td>${puan}</td><td>${les}</td><td>${olum}</td></tr>`; };
 let mesajT = 0;
 function mesaj(baslik, alt = '') { const e = $('mesaj'); e.innerHTML = ''; e.append(baslik); if (alt) { const s = document.createElement('small'); s.textContent = alt; e.append(s); } e.className = ''; void e.offsetWidth; e.className = 'goster'; clearTimeout(mesajT); mesajT = setTimeout(() => { e.className = ''; }, 1900); }
 let toastT = 0;
@@ -308,13 +321,13 @@ function silahSec(i) {
   ben.salSec = i; bag.gonder({ t: 'sec', s: i }); cal('bos', 0.4);
 }
 function savunmaSec(i) {
-  if (!SAVUNMA[i] || ben.sav[i] <= 0) { if (SAVUNMA[i]) toast(`${SAVUNMA[i].ad} yok: mavi kutulardan çıkar.`); return; }
+  if (!SAVUNMA[i] || ben.sav[i] <= 0) { if (SAVUNMA[i]) toast(t('mesaj.savunmaYok', { ad: silahAd(SAVUNMA[i]) })); return; }
   ben.savSec = i; bag.gonder({ t: 'vsec', s: i }); cal('bos', 0.4);
 }
 function atesDene(zaman) {
   if (!fare.sol || !ben.canli || menuAcik || !kilitli || oyun.durum !== 'oyun') return;
   const i = ben.salSec, S = SALDIRI[i];
-  if (!S || ben.sal[i] <= 0) { if (ben.tetikHazir !== false) { cal('bos', 0.6); toast('Elin boş: kırmızı kutulardan silah topla.'); } ben.tetikHazir = false; return; }
+  if (!S || ben.sal[i] <= 0) { if (ben.tetikHazir !== false) { cal('bos', 0.6); toast(t('mesaj.elBos')); } ben.tetikHazir = false; return; }
   if (zaman - ben.sonAtis[i] < S.aralik) return;
   ben.sonAtis[i] = zaman; ben.sal[i]--; ben.tetikHazir = false;
   const b = [ben.x, ben.y + GOZ, ben.z], h = nisanNoktasi(), dd = [h.x - b[0], h.y - b[1], h.z - b[2]], l = Math.hypot(...dd) || 1, d = dd.map(v => v / l), tohum = (Math.random() * 2 ** 31) | 0;
@@ -338,11 +351,11 @@ function savunDene(zaman) {
   fare.sag = false;
   if (!ben.canli || menuAcik || !kilitli || oyun.durum !== 'oyun') return;
   const i = ben.savSec;
-  if (i < 0 || ben.sav[i] <= 0) { cal('bos', 0.6); toast('Savunma eşyan yok: mavi kutulardan topla.'); return; }
+  if (i < 0 || ben.sav[i] <= 0) { cal('bos', 0.6); toast(t('mesaj.savunmaBos')); return; }
   if (zaman - ben.sonSavun < 0.45) return;
   ben.sonSavun = zaman; ben.sav[i]--;
   bag.gonder({ t: 'savun', s: i }); cal(SAVUNMA[i].id, 0.8);
-  if (SAVUNMA[i].id === 'yelek') mesaj('ÇELİK YELEK', `${SAVUNMA[i].zirh} zırh`);
+  if (SAVUNMA[i].id === 'yelek') mesaj(buyuk(silahAd(SAVUNMA[i])), t('mesaj.zirh', { n: SAVUNMA[i].zirh }));
   if (ben.sav[i] <= 0) { const n = ben.sav.findIndex(c => c > 0); if (n >= 0) savunmaSec(n); }
 }
 const cizimZamani = () => oyun?.fark == null ? 0 : simdi() + oyun.fark - (bag?.yerel ? 1 / MAC.tik : 0.1);
@@ -366,7 +379,7 @@ function devam() { menuKapat(); $('kilit').hidden = true; kilitle(); setTimeout(
 $('resume').onclick = devam;
 $('back-home').onclick = () => oyunBitir();
 $('help-dialog').addEventListener('close', () => { if (oyun && !kilitli && !menuAcik) menuAc(); });
-$('oda-link').onclick = () => { const u = location.origin + location.pathname + '?oda=' + oyun?.kod; try { navigator.clipboard.writeText(u).then(() => toast('Link kopyalandı'), () => toast(u)); } catch { toast(u); } };
+$('oda-link').onclick = () => { const u = location.origin + location.pathname + '?oda=' + oyun?.kod; try { navigator.clipboard.writeText(u).then(() => toast(t('mesaj.linkKopyalandi')), () => toast(u)); } catch { toast(u); } };
 
 addEventListener('keydown', e => {
   if (e.code === 'F1') { e.preventDefault(); yardimAc(); return; }
@@ -409,7 +422,7 @@ function kendiAdim(dt, zaman) {
   while (kalan > 1e-5) {
     const h = Math.min(kalan, 1 / 60); kalan -= h;
     for (const o of atAdim(ben, g, h)) {
-      if (o === 'geri') { cal('sahlan', 0.8); mesaj('GERİ DÖNÜŞ YOK', 'At şaha kalktı'); document.body.classList.add('sahlan'); setTimeout(() => document.body.classList.remove('sahlan'), 500); }
+      if (o === 'geri') { cal('sahlan', 0.8); mesaj(t('mesaj.geriYok'), t('mesaj.geriYokAlt')); document.body.classList.add('sahlan'); setTimeout(() => document.body.classList.remove('sahlan'), 500); }
       else if (o === 'zipla') cal('zipla', 0.6); else if (o === 'kon') cal('kon', 0.7);
       else if (o === 'carp') { cal('kon', 1); ben.sars = 0.7; }
     }
@@ -485,21 +498,21 @@ function gostergeler() {
   yaz('hiz', String(Math.round(ben.hiz)));
   cubuk('dayanim-bar', ben.dayanim / AT.dayanim * 100);
   $('can-kutu').classList.toggle('yorgun', ben.yorgun);
-  html('etkiler', [ben.dortnala ? '<span class="acik">⇧ DÖRTNALA</span>' : ben.yorgun ? '<span class="bekle">⇧ YORGUN</span>' : '<span>⇧ DÖRTNALA</span>', ben.mahmuzT > 0 ? '<span class="acik">MAHMUZ</span>' : '', ben.topalT > 0 ? '<span class="kotu">TOPAL</span>' : '', ben.bagT > 0 ? '<span class="kotu">KEMENTLİ</span>' : '', ben.zirh > 0 ? `<span class="acik">YELEK ${Math.round(ben.zirh)}</span>` : ''].join(''));
+  html('etkiler', [ben.dortnala ? `<span class="acik">⇧ ${t('oyun.dortnala')}</span>` : ben.yorgun ? `<span class="bekle">⇧ ${t('oyun.yorgun')}</span>` : `<span>⇧ ${t('oyun.dortnala')}</span>`, ben.mahmuzT > 0 ? `<span class="acik">${t('oyun.mahmuz')}</span>` : '', ben.topalT > 0 ? `<span class="kotu">${t('oyun.topal')}</span>` : '', ben.bagT > 0 ? `<span class="kotu">${t('oyun.kementli')}</span>` : '', ben.zirh > 0 ? `<span class="acik">${t('oyun.yelek', { n: Math.round(ben.zirh) })}</span>` : ''].join(''));
   // Eşyalar: üstte saldırı (tekerlek), altta savunma (1–5)
-  html('saldiri', SALDIRI.map((s, i) => `<span class="${i === ben.salSec ? 'secili' : ''}${ben.sal[i] > 0 ? '' : ' yok'}">${s.ad}<b>${ben.sal[i]}</b></span>`).join(''));
-  html('savunma', SAVUNMA.map((s, i) => `<span class="${i === ben.savSec ? 'secili' : ''}${ben.sav[i] > 0 ? '' : ' yok'}"><kbd>${i + 1}</kbd>${s.ad}<b>${ben.sav[i]}</b></span>`).join(''));
+  html('saldiri', SALDIRI.map((s, i) => `<span class="${i === ben.salSec ? 'secili' : ''}${ben.sal[i] > 0 ? '' : ' yok'}">${silahAd(s)}<b>${ben.sal[i]}</b></span>`).join(''));
+  html('savunma', SAVUNMA.map((s, i) => `<span class="${i === ben.savSec ? 'secili' : ''}${ben.sav[i] > 0 ? '' : ' yok'}"><kbd>${i + 1}</kbd>${silahAd(s)}<b>${ben.sav[i]}</b></span>`).join(''));
   const S = SALDIRI[ben.salSec];
-  yaz('silah-ad', S ? S.ad.toLocaleUpperCase('tr') : 'ELLERİN BOŞ');
+  yaz('silah-ad', S ? buyuk(silahAd(S)) : t('oyun.elBos'));
   yaz('cephane', S ? String(ben.sal[ben.salSec]) : '—');
   const kalan = Math.max(0, oyun.kalan - (oyun.durum === 'oyun' ? simdi() - oyun.kalanZ : 0));
   yaz('sure', `${Math.floor(kalan / 60)}:${String(Math.floor(kalan % 60)).padStart(2, '0')}`);
   const p = pistNoktasi(ben.s), kapi = Math.floor(ben.enIleri / (P.L / MAC.noktaSayisi)) % MAC.noktaSayisi;
-  yaz('bolum', (BOLUM_AD[p.bolum] ?? '').toLocaleUpperCase('tr')); yaz('kapi', `KAPI ${kapi}`);
+  yaz('bolum', adBuyuk(BOLUM_AD[p.bolum] ?? '')); yaz('kapi', t('oyun.kapi', { n: kapi }));
   const sira = oyun.sk.findIndex(r => r[0] === oyun.benId), benim = oyun.sk[sira], lider = oyun.sk.find(r => r[0] !== oyun.benId);
-  html('skorlar', `<span class="ben">Sen ${benim?.[1] ?? 0}</span><span>${sira + 1}. / ${oyun.sk.length || MAC.kisi}</span>${lider ? `<span>${kacis(adi(lider[0]))} ${lider[1]}</span>` : ''}`);
-  if (!ben.canli && oyun.durum === 'oyun') yaz('olum-sayac', `Yeniden doğuş ${Math.max(0, Math.ceil(MAC.dogusBekle - (simdi() - oyun.olumZ)))}`);
-  if (oyun.durum === 'son' && bag.yerel) yaz('son-sayac', `Yeni koşu ${Math.max(0, Math.ceil(oyun.sonBitis - simdi()))} saniye sonra`);
+  html('skorlar', `<span class="ben">${t('oyun.sen', { n: benim?.[1] ?? 0 })}</span><span>${t('oyun.sira', { s: sira + 1, n: oyun.sk.length || MAC.kisi })}</span>${lider ? `<span>${kacis(adi(lider[0]))} ${lider[1]}</span>` : ''}`);
+  if (!ben.canli && oyun.durum === 'oyun') yaz('olum-sayac', t('olum.sayac', { n: Math.max(0, Math.ceil(MAC.dogusBekle - (simdi() - oyun.olumZ))) }));
+  if (oyun.durum === 'son' && bag.yerel) yaz('son-sayac', t('son.sayac', { n: Math.max(0, Math.ceil(oyun.sonBitis - simdi())) }));
   $('skor-tablo').hidden = !skorGoster || oyun.durum === 'son';
   if (skorGoster) html('skor-satir', oyun.sk.map(([id, puan, les, olum], i) => satir(i + 1, id, puan, les, olum)).join(''));
   $('nisangah').classList.toggle('gizli', !ben.canli);
@@ -519,7 +532,7 @@ function etiketler() {
     v3.set(v.x, v.y + 3.1, v.z).project(gor.kamera); if (v3.z > 1 || Math.abs(v3.x) > 1.1 || Math.abs(v3.y) > 1.1) continue;
     gorunen.add(id);
     let e = etiketDiv.get(id); if (!e) { e = document.createElement('div'); e.innerHTML = '<em></em><span></span><i><b></b></i>'; $('etiketler').append(e); etiketDiv.set(id, e); }
-    e.className = 'etiket' + (ar ? ' aranan' : ''); e.querySelector('em').textContent = ar ? '★ ARANAN' : ''; e.querySelector('span').textContent = adi(id);
+    e.className = 'etiket' + (ar ? ' aranan' : ''); e.querySelector('em').textContent = ar ? '★ ' + t('oyun.aranan') : ''; e.querySelector('span').textContent = adi(id);
     e.querySelector('b').style.width = (son?.o.get(id)?.[9] ?? 100) + '%'; e.querySelector('i').hidden = id !== hedef;
     e.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px'; e.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
   }
@@ -563,14 +576,14 @@ function lobiBaglan() {
     if (d === 'acik') {
       lobiAcik = true; lobiDeneme = 0; b.gonder({ t: 'lobi' }); lobiYaz();
       const kayit = oturum.al(), kod = adresKodu() ? kodDuzelt(adresKodu()) : null;
-      if (kayit?.kod && (!kod || kod === kayit.kod)) { durumYaz('Odaya geri bağlanıyor…'); istek({ t: 'don', kod: kayit.kod, jeton: kayit.jeton }); }
-      else if (kod) { durumYaz('Odaya bağlanıyor…'); istek({ t: 'kod', kod }); }
+      if (kayit?.kod && (!kod || kod === kayit.kod)) { durumYaz(t('lobi.geriBaglaniyor')); istek({ t: 'don', kod: kayit.kod, jeton: kayit.jeton }); }
+      else if (kod) { durumYaz(t('lobi.baglaniyor')); istek({ t: 'kod', kod }); }
       return;
     }
     const oyundaydi = oyun && bag === b, odadaydi = oyundaydi || !!odaDurum;
     lobiAcik = false; lobiBag = null;
     if (oyundaydi) oyunKapat();
-    if (odadaydi) { odaDurum = null; bekleGizle(); anaGoster(); toast('Sunucu bağlantısı koptu.'); }
+    if (odadaydi) { odaDurum = null; bekleGizle(); anaGoster(); toast(t('lobi.koptu')); }
     lobiYaz();
     setTimeout(lobiBaglan, Math.min(30000, 5000 * ++lobiDeneme));
   });
@@ -588,7 +601,7 @@ function agMesaj(m) {
     case 'oda': odaDurum = m; if (!cevrimIci()) bekleGoster(); return;
     case 'hata':
       if (cevrimIci()) return;
-      durumYaz(m.m);
+      durumYaz(m.kod && DILLER[DIL]['sunucu.' + m.kod] != null ? tAd('sunucu', m.kod) : m.m);
       if (!odaDurum) { oturum.yaz(null); adresTemizle(); }
       return;
     case 'hosgeldin': if (oyun) oyunKapat(); bekleGizle(); oyunBaslat(lobiBag); break;
@@ -600,28 +613,28 @@ function lobiYaz() {
   $('cevrim').classList.toggle('kapali', !lobiAcik);
   for (const id of ['hizli', 'oda-kur', 'odaya-katil']) $(id).disabled = !lobiAcik;
   if (!lobiAcik) $('kod-satir').hidden = true;
-  $('cevrimici-sayi').textContent = lobiAcik ? `● ${lobiListe.cevrimici ?? 0} çevrim içi` : '';
+  $('cevrimici-sayi').textContent = lobiAcik ? t('lobi.cevrimici', { n: lobiListe.cevrimici ?? 0 }) : '';
   $('acik-odalar').hidden = !lobiAcik;
   const l = lobiListe.odalar ?? [], k = $('odalar');
   $('oda-sayi').textContent = l.length ? String(l.length) : '';
   k.innerHTML = '';
-  if (!l.length) { k.innerHTML = '<div class="bos">Şu an açık oda yok. Hızlı katıl yeni bir oda kurar.</div>'; return; }
+  if (!l.length) { k.innerHTML = `<div class="bos">${t('lobi.bos')}</div>`; return; }
   for (const o of l) {
     const dolu = o.n >= o.max, e = document.createElement('button');
     e.className = 'oda'; e.disabled = dolu;
-    e.innerHTML = `<span class="oda-ad"><b></b><small>${ZORLUK[o.zorluk]?.ad ?? ''} botlar · ${o.n}/${o.max} binici</small></span><em class="oda-durum${o.durum === 'mac' ? ' macta' : ''}">${o.durum === 'mac' ? 'MAÇTA' : 'LOBİDE'}</em><em class="oda-katil">${dolu ? 'DOLU' : 'KATIL →'}</em>`;
+    e.innerHTML = `<span class="oda-ad"><b></b><small>${t('lobi.odaBilgi', { z: zorlukAd(o.zorluk), n: o.n, max: o.max })}</small></span><em class="oda-durum${o.durum === 'mac' ? ' macta' : ''}">${t(o.durum === 'mac' ? 'lobi.macta' : 'lobi.lobide')}</em><em class="oda-katil">${t(dolu ? 'lobi.dolu' : 'lobi.katil')}</em>`;
     e.querySelector('b').textContent = o.kuran;
-    e.onclick = () => { durumYaz('Odaya bağlanıyor…'); istek({ t: 'kod', kod: o.kod }); };
+    e.onclick = () => { durumYaz(t('lobi.baglaniyor')); istek({ t: 'kod', kod: o.kod }); };
     k.append(e);
   }
 }
-$('hizli').onclick = () => { if (!lobiAcik) return; durumYaz('Oda aranıyor…'); istek({ t: 'hizli' }); };
-$('oda-kur').onclick = () => { if (!lobiAcik) return; durumYaz('Oda kuruluyor…'); istek({ t: 'kur' }); };
+$('hizli').onclick = () => { if (!lobiAcik) return; durumYaz(t('lobi.araniyor')); istek({ t: 'hizli' }); };
+$('oda-kur').onclick = () => { if (!lobiAcik) return; durumYaz(t('lobi.kuruluyor')); istek({ t: 'kur' }); };
 $('odaya-katil').onclick = () => { const s = $('kod-satir'); s.hidden = !s.hidden; if (!s.hidden) $('kod').focus(); };
 function kodlaKatil() {
   const kod = kodDuzelt($('kod').value);
-  if (!kodYeterli(kod)) { durumYaz('Oda kodunu yaz'); $('kod').focus(); return; }
-  $('kod').value = kod; durumYaz('Odaya bağlanıyor…'); istek({ t: 'kod', kod });
+  if (!kodYeterli(kod)) { durumYaz(t('lobi.kodYaz')); $('kod').focus(); return; }
+  $('kod').value = kod; durumYaz(t('lobi.baglaniyor')); istek({ t: 'kod', kod });
 }
 $('kod-katil').onclick = kodlaKatil;
 $('kod').onkeydown = e => { if (e.key === 'Enter') kodlaKatil(); };
@@ -634,17 +647,17 @@ function bekleGoster() {
   const d = odaDurum; if (!d) return;
   $('ana').hidden = true; $('bekleme').hidden = false;
   const kuran = d.kuran === d.ben, kutu = $('koltuklar');
-  $('b-goz').textContent = `ODA · ${ZORLUK[d.zorluk]?.ad ?? ''} botlar`;
+  $('b-goz').textContent = t('oda.ustBot', { z: zorlukAd(d.zorluk) });
   $('b-kod').textContent = d.kod;
-  $('b-gorunur').textContent = d.ozel ? 'ÖZEL ODA · yalnız kodla' : 'AÇIK ODA · listede görünür';
+  $('b-gorunur').textContent = t(d.ozel ? 'oda.ozel' : 'oda.acik');
   if (!kuran || !d.koltuk.some(k => k && k.u === tasiSecili)) tasiSecili = null;
   kutu.innerHTML = ''; kutu.classList.toggle('kuran', kuran);
   d.koltuk.forEach((k, i) => {
     const e = document.createElement('button'); e.type = 'button';
     e.className = 'koltuk ' + (k ? 'dolu' : 'bos') + (k?.u === d.ben ? ' sen' : '') + (k?.koptu ? ' koptu' : '') + (k && k.u === tasiSecili ? ' secili' : '');
     e.innerHTML = `<i>${i + 1}</i>` + (k
-      ? `<b></b>${k.u === d.kuran ? '<small>kuran</small>' : ''}${k.u === d.ben ? '<small class="sen">sen</small>' : ''}${k.koptu ? '<small class="kop">koptu</small>' : ''}`
-      : '<span class="bot-yazi">Bot · boş koltuk</span><span class="otur-yazi">Buraya otur</span>');
+      ? `<b></b>${k.u === d.kuran ? `<small>${t('oda.kuran')}</small>` : ''}${k.u === d.ben ? `<small class="sen">${t('oda.sen')}</small>` : ''}${k.koptu ? `<small class="kop">${t('oda.koptu')}</small>` : ''}`
+      : `<span class="bot-yazi">${t('oda.bosKoltuk')}</span><span class="otur-yazi">${t('oda.otur')}</span>`);
     if (k) e.querySelector('b').textContent = k.ad;
     e.onclick = () => koltukTik(i);
     if (kuran) {
@@ -662,8 +675,8 @@ function bekleGoster() {
   for (const b of $('b-zorluk').children) { b.classList.toggle('secili', b.dataset.v === d.zorluk); b.disabled = !kuran; }
   for (const b of $('b-ozel').children) { b.classList.toggle('secili', (b.dataset.v === '1') === d.ozel); b.disabled = !kuran; }
   const insan = d.koltuk.filter(Boolean).length;
-  $('b-bilgi').textContent = `${insan} insan · ${MAC.kisi - insan} bot · koltuk sırası çıkış dizilişi`;
-  $('b-ipucu').textContent = tasiSecili != null ? 'Taşınacak koltuğa tıkla' : kuran ? 'Oyuncuyu sürükleyip bırak ya da tıkla, sonra koltuğa tıkla.' : 'Boş koltuğa tıklayıp oraya geçebilirsin.';
+  $('b-bilgi').textContent = t('oda.bilgi', { i: insan, b: MAC.kisi - insan });
+  $('b-ipucu').textContent = t(tasiSecili != null ? 'oda.tasi' : kuran ? 'oda.ipucuKuran' : 'oda.ipucu');
   $('b-basla').hidden = !kuran; $('b-bekle').hidden = kuran;
 }
 function koltukTik(i) {
@@ -679,7 +692,7 @@ $('b-basla').onclick = () => lobiBag?.gonder({ t: 'basla' });
 $('b-cik').onclick = () => odadanCik();
 $('b-link').onclick = () => {
   const b = $('b-link'), u = davetLinki(odaDurum?.kod ?? ''), yaz = () => { $('b-ipucu').textContent = u; };
-  try { navigator.clipboard.writeText(u).then(() => { b.textContent = 'Link kopyalandı'; setTimeout(() => { b.textContent = 'Linki kopyala'; }, 1600); }, yaz); } catch { yaz(); }
+  try { navigator.clipboard.writeText(u).then(() => { b.textContent = t('mesaj.linkKopyalandi'); setTimeout(() => { b.textContent = t('oda.linkKopyala'); }, 1600); }, yaz); } catch { yaz(); }
 };
 /** Odadan çık: koltuk boşalır, ?oda ve jeton silinir, ana ekrana dönülür. */
 function odadanCik() {

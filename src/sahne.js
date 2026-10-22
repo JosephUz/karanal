@@ -4,6 +4,7 @@ import * as T from 'three';
 import { P, L, pistNoktasi, noktalar, sinir, dunya, ENGELLER, KUTU_YERLERI } from './pist.js';
 import { MAC, SAVUNMA } from './ayar.js';
 import { biniciModeli } from './karakter.js';
+import { t } from './dil.js';
 
 /** Basit karma: aynı girdiye hep aynı 0…1. */
 const karma = (a, b = 0) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -202,7 +203,7 @@ export class Gorunum {
   bahisKur(i, s, nokta, yaw) {
     const k = (i + 14) % P.N, [x, y, z] = nokta(k, s * (P.w[k] / 2 + 1.1), 3.2);
     const doku = yaziDokusu((c, w, h) => {
-      tahta(c, w, h); c.fillStyle = '#efe2c2'; c.font = 'bold 74px Georgia, serif'; c.textAlign = 'center'; c.fillText('BAHİS', w / 2, 92);
+      tahta(c, w, h); c.fillStyle = '#efe2c2'; c.font = 'bold 74px Georgia, serif'; c.textAlign = 'center'; c.fillText(t('sahne.bahis'), w / 2, 92);
       const ORAN = ['2.1', '3.4', '4.0', '5.6', '8.3'], RENK = ['#c7442f', '#3d6fd6', '#e8c547', '#3f9a55', '#ece6d6'];
       ORAN.forEach((o, n) => { const yy = 140 + n * 66; c.fillStyle = '#161210'; c.fillRect(60, yy, w - 120, 54); c.fillStyle = RENK[n]; c.fillRect(70, yy + 6, 44, 42); c.fillStyle = '#111'; c.font = 'bold 34px system-ui'; c.fillText(String(n + 1), 92, yy + 40); c.fillStyle = '#efe2c2'; c.textAlign = 'right'; c.fillText(o, w - 80, yy + 40); c.textAlign = 'center'; });
     }, 512, 512);

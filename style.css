@@ -127,10 +127,12 @@ dialog::backdrop{background:#0b0604a8;backdrop-filter:blur(5px)}
 /* STANDART üst araç çubuğu (İz Peşinde düzeni): ← josephuz.com · Ses · Kontroller F1. */
 #toptools .subtle{border:1px solid var(--line);background:#1a110bb0;padding:9px 14px;color:var(--cream);font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;border-radius:0}
 #toptools a.subtle:visited{color:var(--cream)}#toptools .muted,#menu-dialog .menu-stack .muted{opacity:.62}
-body.oyunda #homeLink{display:none}body.oyunda.kilitli #toptools{display:none}
+body.oyunda #homeLink,body.oyunda #dil{display:none}body.oyunda.kilitli #toptools{display:none}
+/* Dil düğmesi (josephuz dil standardı): öbür dili yazıyla gösterir; simgeleşen çubukta da yazı kalır */
+#toptools #dil{font-weight:700;letter-spacing:1px}
 @media (max-width:650px),(max-height:560px){
 #toptools{gap:5px}#toptools .subtle{font-size:0;gap:0;padding:0;width:34px;height:34px;justify-content:center}#toptools .subtle::before{font-size:15px;line-height:1}#toptools kbd{display:none}
-#toptools #homeLink::before{content:"←"}#toptools #sound::before{content:"🔊"}#toptools #sound.muted::before{content:"🔇"}#toptools #help::before{content:"?";font-weight:900}}
+#toptools #homeLink::before{content:"←"}#toptools #sound::before{content:"🔊"}#toptools #sound.muted::before{content:"🔇"}#toptools #help::before{content:"?";font-weight:900}#toptools #dil{font-size:11px}}
 @media (max-height:560px) and (min-width:651px){#toptools #homeLink{font-size:10px;width:auto;padding:0 10px}#toptools #homeLink::before{content:none}}
 
 @media(max-width:1100px){.ana-metin{left:5%;width:64%}.sahne-yazi{display:none}#header{padding:17px 20px}}

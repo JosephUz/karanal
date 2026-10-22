@@ -8,6 +8,7 @@
     "dev": "node server.mjs --open",
     "build:web": "node scripts/build-web.mjs",
     "test": "node --test tests/benzetim.test.mjs tests/sunucu.test.mjs",
+    "dil": "node scripts/dil-denetim.mjs",
     "deploy:web": "node scripts/build-web.mjs && npx wrangler@4 deploy"
   },
   "dependencies": {

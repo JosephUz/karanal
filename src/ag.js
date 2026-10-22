@@ -4,7 +4,7 @@ import { Oda } from './oda.js';
 import { SERVER } from './config.js';
 
 export function yerelBaglanti({ ad, avatar, sure, zorluk }) {
-  const oda = new Oda({ ad: 'Botlu koşu', sure, zorluk }), kuyruk = [];
+  const oda = new Oda({ ad: 'Kara Nal', sure, zorluk }), kuyruk = [];
   const id = oda.katil(m => kuyruk.push(m), ad, avatar);
   return { yerel: true, oda, gonder: m => oda.mesaj(id, m), al: () => kuyruk.splice(0), adim: dt => oda.adim(dt), kapat() {} };
 }
