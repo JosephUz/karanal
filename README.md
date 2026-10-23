@@ -1,5 +1,11 @@
 # Kara Nal
 
+> **EN:** Mounted combat in a cave, in the browser (Three.js) with Juland's box characters: ten riders on an endless track, the most knockdowns wins; with bots or in an online room.
+>
+> **TR:** Tarayıcıda (Three.js) Juland'ın kutu karakterleriyle mağarada atlı çatışma: on binici bitmeyen pistte, en çok kişiyi düşüren kazanır; botlarla ya da çevrim içi odada.
+
+**Play / Oyna:** https://karanal.josephuz.com · **Source / Kaynak:** https://github.com/JosephUz/karanal
+
 Juland'ın kutu karakterleriyle mağarada atlı çatışma. On binici bitmeyen bir döngü pistte koşar; amaç bitişe ilk
 varmak değil, süre boyunca en çok kişiyi düşürmek. Geri dönüş yok: akışın tersine giden at şaha kalkar.
 Yolda kırmızı sandıktan saldırı silahı (sol tık), mavi sandıktan savunma eşyası (sağ tık) toplanır; düşen eşyalarını
@@ -57,3 +63,18 @@ josephuz oda standardına uyar (`josephuz/docs/oda-standardi.md`; yazılar orada
 - İstemci: Cloudflare Worker, `karanal.josephuz.com` → `npm run deploy:web`
 - Sunucu: Docker + Cloudflare Tunnel, `karanal-sunucu.josephuz.com` → `docker compose --profile tunnel up -d --build`
   (`.env` içinde `TUNNEL_TOKEN`, paneldeki rota `http://localhost:5220`).
+
+## Lisans / License
+
+- **Kod:** [MIT](LICENSE), Copyright (c) 2026 JosephUz. Kodu kullanabilir, değiştirebilir, dağıtabilirsin.
+- **MIT dışında, tüm hakları saklıdır:** "Kara Nal" ve "JosephUz" adları. Ayrıntı: [TRADEMARKS.md](TRADEMARKS.md).
+- **Fork'lar** başka bir ad ve logo kullanmalı, resmî sürüm olduğunu ima etmemeli.
+- **Üçüncü taraf:** [three.js](https://github.com/mrdoob/three.js) ve [ws](https://github.com/websockets/ws) npm bağımlılığıdır (ikisi de MIT), depoda değil, kendi lisanslarıyla gelir.
+
+> **In English:** The code is licensed under [MIT](LICENSE). The name "Kara Nal", the name "JosephUz" are **not** covered by MIT and are all rights reserved; see [TRADEMARKS.md](TRADEMARKS.md). Forks must use a different name and logo.
+
+## Katkı / Contributing
+
+Hata bildirimi, öneri ve pull request'e açığız. Büyük bir değişiklikten önce bir [issue](https://github.com/JosephUz/karanal/issues) açıp konuşalım; oyunun dengesi ve yönü JosephUz'da. Kod ve oyun Türkçe: değişken, işlev ve mesaj adları Türkçe, çevresindeki kodun düzenine uy; `npm test` geçmeli. Gönderdiğin katkı bu deponun MIT lisansıyla yayımlanır. Müzik, ses ya da görsel eklemeden önce issue'da sor. Güvenlik açıklarını issue yerine [SECURITY.md](SECURITY.md)'deki yoldan bildir.
+
+> **In English:** Issues and pull requests are welcome; please open an issue before large changes. Contributions are accepted under the MIT license of this repository. Report security issues privately as described in [SECURITY.md](SECURITY.md).
