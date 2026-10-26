@@ -6,6 +6,9 @@
 
 **Play / Oyna:** https://karanal.josephuz.com · **Source / Kaynak:** https://github.com/JosephUz/karanal
 
+<p align="center"><img src="docs/ekran/1.jpg" alt="Kara Nal" width="100%"></p>
+<p align="center"><img src="docs/ekran/2.jpg" alt="Kara Nal" width="49%"> <img src="docs/ekran/3.jpg" alt="Kara Nal" width="49%"></p>
+
 Juland'ın kutu karakterleriyle mağarada atlı çatışma. On binici bitmeyen bir döngü pistte koşar; amaç bitişe ilk
 varmak değil, süre boyunca en çok kişiyi düşürmek. Geri dönüş yok: akışın tersine giden at şaha kalkar.
 Yolda kırmızı sandıktan saldırı silahı (sol tık), mavi sandıktan savunma eşyası (sağ tık) toplanır; düşen eşyalarını
