@@ -211,7 +211,7 @@ export default {
   'yardim.tekerlek': '<kbd>WHEEL</kbd> Switch attack weapon',
   'yardim.rakam': '<kbd>1 – 5</kbd> Mine · Smoke · Spikes · Vest · Spurs',
   'yardim.sandik': '<b>Red crates</b> give attack weapons: pistol, shotgun (deadly up close), rifle (long range), lasso (slows them and pulls them to you), dynamite (thrown). <b>Blue crates</b> give defense items: mines and spikes drop behind you, smoke ruins your chaser\'s aim, the steel vest soaks up hits, spurs get you away and snap a lasso.',
-  'yardim.amac': 'The goal isn\'t the finish line, it\'s <b>takedowns</b>: 100 points each, with bonuses for 3 and 5 in a row. The top rider becomes <b>wanted</b>; taking them down is worth +100. Fallen riders always drop loot (their gear, or a random tool if empty-handed) and ride out empty-handed from the <b>last gate they passed</b>. No riding against the flow: your horse rears up. A run lasts 8 minutes.',
+  'yardim.amac': 'The goal isn\'t the finish line, it\'s <b>takedowns</b>: 100 points each, with bonuses for 3 and 5 in a row. The top rider becomes <b>wanted</b>; taking them down is worth +100. Fallen riders drop their gear (loot) and ride out empty-handed from the <b>last gate they passed</b>. No riding against the flow: your horse rears up. A run lasts 8 minutes.',
   'yardim.anladim': 'GOT IT →',
 
   // Errors

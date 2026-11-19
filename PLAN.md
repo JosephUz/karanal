@@ -3,7 +3,7 @@
 ## Özü
 Mağara içinde, döngü hâlinde bir pistte **10 atlı binici** (boş koltukta bot). Amaç bitiş çizgisine ilk varmak değil: **süre boyunca en çok kişiyi düşürmek.** Pist bitmez, kavga hiç kesilmez.
 
-- **Ölünce:** binici **son geçtiği kontrol kapısında** yeniden doğar. Eşyaları yere düşer ve **ganimet** olur (yanından geçen alır; eli boşsa rastgele bir alet düşer, her düşüşte ganimet kesin); elleri boş kalır. Pist döngü olduğu için diğerlerinin önünde mi arkasında mı kaldığını bilemez. Yola çıkıp bir an önce kutu toplaması gerekir.
+- **Ölünce:** binici **son geçtiği kontrol kapısında** yeniden doğar. Eşyaları yere düşer ve **ganimet** olur (yanından geçen alır); elleri boş kalır. Pist döngü olduğu için diğerlerinin önünde mi arkasında mı kaldığını bilemez. Yola çıkıp bir an önce kutu toplaması gerekir.
 - **Geri gidilemez:** at istenen yöne sürülür, pist geniştir. Ama pistin akışına ters yönde, son geçilen noktadan birkaç adımdan fazla geri gidilemez: at şaha kalkar ve geri döner.
 - **Öndeysen hedefsin:** öndeki kişi ya savunur (kalkan, duman) ya da arkasına tuzak bırakıp peşindekileri temizler. Arkadaki ise önündekini avlar. Kimseye saldırmamak seni korumaz.
 
