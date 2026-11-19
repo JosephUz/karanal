@@ -209,7 +209,7 @@ export default {
   'yardim.tekerlek': '<kbd>TEKERLEK</kbd> Saldırı silahı değiştir',
   'yardim.rakam': '<kbd>1 – 5</kbd> Mayın · Duman · Çivi · Yelek · Mahmuz',
   'yardim.sandik': '<b>Kırmızı sandık</b> saldırı silahı verir: tabanca, çifte (yakında güçlü), tüfek (uzağa), kement (yavaşlatır, sana çeker), dinamit (fırlatılır). <b>Mavi sandık</b> savunma eşyası verir: mayın ve çivi arkana bırakılır, duman peşindekinin nişanını keser, çelik yelek darbeyi emer, mahmuz kaçırır ve kementi koparır.',
-  'yardim.amac': 'Amaç bitişe varmak değil, <b>düşürmek</b>: her düşürme 100 puan, üçleme ve beşleme ek puan. En çok düşüreni <b>aranan</b> olur; onu düşürene +100. Düşen eşyalarını yere bırakır (ganimet) ve <b>son geçtiği kapıdan</b> eli boş çıkar. Akışın tersine gidilmez: at şaha kalkar. Koşu 8 dakika.',
+  'yardim.amac': 'Amaç bitişe varmak değil, <b>düşürmek</b>: her düşürme 100 puan, üçleme ve beşleme ek puan. En çok düşüreni <b>aranan</b> olur; onu düşürene +100. Düşen her zaman ganimet bırakır (eşyaları; eli boşsa rastgele bir alet) ve <b>son geçtiği kapıdan</b> eli boş çıkar. Akışın tersine gidilmez: at şaha kalkar. Koşu 8 dakika.',
   'yardim.anladim': 'ANLADIM →',
 
   // Hata

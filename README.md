@@ -12,7 +12,7 @@
 Juland'ın kutu karakterleriyle mağarada atlı çatışma. On binici bitmeyen bir döngü pistte koşar; amaç bitişe ilk
 varmak değil, süre boyunca en çok kişiyi düşürmek. Geri dönüş yok: akışın tersine giden at şaha kalkar.
 Yolda kırmızı sandıktan saldırı silahı (sol tık), mavi sandıktan savunma eşyası (sağ tık) toplanır; düşen eşyalarını
-ganimet bırakır ve son geçtiği kapıdan eli boş çıkar. Oyun tasarımı: [PLAN.md](PLAN.md).
+ganimet bırakır (eli boşsa rastgele bir alet) ve son geçtiği kapıdan eli boş çıkar. Oyun tasarımı: [PLAN.md](PLAN.md).
 
 ## Çalıştırma
 

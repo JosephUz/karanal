@@ -160,8 +160,12 @@ export class Mac {
   }
   dusur(h, saldiran, silah, kafa) {
     h.canli = false; h.can = 0; h.olumZ = this.z; h.olum++; h.seri = 0; h.bagT = 0; h.topalT = 0; h.mahmuzT = 0; h.hiz = 0;
-    // Eşyalar yere düşer: ganimet
-    if (h.sal.some(c => c > 0) || h.sav.some(c => c > 0)) this.ganimetler.push({ id: this.no++, x: h.x, y: h.y, z: h.z, s: h.s, sal: h.sal.slice(), sav: h.sav.slice(), bitisZ: this.z + MAC.ganimetSure });
+    // Eşyalar yere düşer: ganimet. Her düşüşte alet çıkar; eli boşsa kutudaki gibi rastgele bir alet.
+    const sal = h.sal.slice(), sav = h.sav.slice();
+    if (!sal.some(c => c > 0) && !sav.some(c => c > 0)) {
+      if (this.r() < 0.5) { const i = sec(SALDIRI, this.r); sal[i] = SALDIRI[i].cephane; } else { const i = sec(SAVUNMA, this.r); sav[i] = SAVUNMA[i].adet; }
+    }
+    this.ganimetler.push({ id: this.no++, x: h.x, y: h.y, z: h.z, s: h.s, sal, sav, bitisZ: this.z + MAC.ganimetSure });
     Object.assign(h, bos(), { salSec: -1, savSec: -1, zirh: 0 });
     const arananDi = this.aranan === h.id;
     let puan = 0, seri = 0;
